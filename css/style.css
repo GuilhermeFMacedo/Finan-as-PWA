@@ -1,0 +1,1844 @@
+/* VARIÁVEIS DE CORES */
+:root {
+  --bg-color: #0f0f0f;
+  --card-bg: #1e1e1e;
+  --primary: #8e44ff;
+  --primary-hover: #7b3ce0;
+  --text-main: #ffffff;
+  --text-secondary: #b0b0b0;
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --border: #333333;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-main);
+  padding-bottom: 90px;
+  line-height: 1.5;
+}
+
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* CRIANDO E ARRUMANDO */
+/* =========================
+
+/* =========================
+   HEADER MINIMALISTA
+========================= */
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+/* TÍTULO */
+
+#modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.3px;
+}
+
+
+
+/* =========================
+   INPUTS - MODAL
+========================= */
+
+.modal-body input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e4e6eb;
+  background: #f7f8fc;
+  font-size: 14px;
+  color: #1e1e1e;
+  transition: all 0.2s ease;
+}
+
+/* Placeholder */
+.modal-body input::placeholder {
+  color: #9aa0a6;
+  font-weight: 400;
+}
+
+/* Foco */
+.modal-body input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #673ab7;
+  box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.15);
+}
+
+/* Remove setinhas feias do number (mobile fica melhor) */
+.modal-body input[type=number]::-webkit-inner-spin-button,
+.modal-body input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* =========================
+   SELECT - MODAL
+========================= */
+
+.modal-body select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e4e6eb;
+  background: #f7f8fc;
+  font-size: 14px;
+  color: #1e1e1e;
+  transition: all 0.2s ease;
+}
+
+/* Placeholder */
+.modal-body select::placeholder {
+  color: #9aa0a6;
+  font-weight: 400;
+}
+
+/* Foco */
+.modal-body select:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #673ab7;
+  box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.15);
+}
+
+/* Remove setinhas feias do number (mobile fica melhor) */
+.modal-body select[type=number]::-webkit-inner-spin-button,
+.modal-body select[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* =========================
+   BOTÃO SALVAR
+========================= */
+
+.save-btn {
+  margin-top: 10px;
+  padding: 15px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #673ab7, #512da8);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(103, 58, 183, 0.35);
+  transition: all 0.2s ease;
+}
+
+/* Hover desktop */
+.save-btn:hover {
+  filter: brightness(1.05);
+}
+
+/* Clique */
+.save-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 12px rgba(103, 58, 183, 0.25);
+}
+
+/* =========================
+   GRUPO COR - LAYOUT HORIZONTAL
+========================= */
+
+.input-group-color {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #aaa;
+}
+
+/* =========================
+   INPUT COLOR EM FORMATO CÍRCULO
+========================= */
+
+#corCategoria,
+#corCartao {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+/* Remove borda padrão interna */
+#corCategoria::-webkit-color-swatch-wrapper,
+#corCartao::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+#corCategoria::-webkit-color-swatch,
+#corCartao::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+/* Efeito ao clicar */
+#corCategoria:focus,
+#corCartao:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.25);
+}
+
+
+
+/* =========================
+   SWITCH UNIVERSAL
+========================= */
+
+.switch-group input[type="checkbox"] {
+  appearance: none;
+  width: 46px;
+  height: 26px;
+  background: #ddd;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  outline: none;
+}
+
+/* bolinha interna */
+.switch-group input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* quando ativo */
+.switch-group input[type="checkbox"]:checked {
+  background: #673ab7;
+}
+
+.switch-group input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+/* alinhamento do grupo */
+.switch-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+}
+
+/* --- LÓGICA DE SPA (PÁGINAS) --- */
+.page {
+  display: none;
+  /* Esconde todas as páginas por padrão */
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.page.active {
+  display: block;
+  /* Só mostra a página ativa */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* --- CABEÇALHO DAS PÁGINAS --- */
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 1.5rem;
+  margin-right: 15px;
+  cursor: pointer;
+}
+
+
+/* BOTÕES DE CONFIGURAÇÃO (Cartão, Categoria, Pessoas) */
+.config-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  /* Alinha o texto à esquerda */
+  padding: 18px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ícone ou Símbolo dentro do botão (opcional) */
+.config-btn::before {
+  content: '+';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(142, 68, 255, 0.1);
+  color: var(--primary);
+  border-radius: 8px;
+  margin-right: 15px;
+  font-size: 1.2rem;
+}
+
+/* Efeito ao clicar/passar o mouse */
+.config-btn:active {
+  background: #252525;
+  transform: scale(0.98);
+  border-color: var(--primary);
+}
+
+/* Estilo para o subtítulo/descrição dentro da config (se houver) */
+.config-btn span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.config-btn small {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: normal;
+  margin-top: 2px;
+}
+
+/* Seta no final do botão para parecer menu */
+.config-btn::after {
+  content: '›';
+  position: absolute;
+  right: 20px;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 15px;
+  background: var(--primary);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* NAVBAR MODERNA */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 75px;
+  background: rgba(28, 28, 28, 0.8);
+  backdrop-filter: blur(15px);
+  /* Efeito vidro */
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  z-index: 1000;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: 0.3s;
+  flex: 1;
+}
+
+.nav-item span {
+  font-size: 1.5rem;
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+/* BOTÃO FLUTUANTE */
+.plus-button {
+  position: relative;
+  top: -25px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: white;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(142, 68, 255, 0.4);
+  border: 4px solid var(--bg-color);
+  /* Cria um destaque em volta */
+}
+
+/* TRANSAÇÕES */
+.item-transacao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+  margin-bottom: 8px;
+  border-radius: 12px;
+}
+
+.item-transacao:last-child {
+  border-bottom: none;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* O card principal */
+.item-config {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-left: 6px solid var(--cor-cartao); /* Usa a cor do banco aqui */
+  background-color: #000000;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Se quiser um círculo colorido ao lado do nome */
+.indicador-cor {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--cor-cartao);
+  margin-right: 8px;
+}
+
+.info-detalhes small {
+  display: block;
+  color: #ffffff;
+}
+
+
+
+
+
+
+
+
+
+/* --- MODAL (Seu código com ajustes preventivos) --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
+    box-sizing: border-box;
+  backdrop-filter: blur(4px); /* Adicionei um leve blur para ficar mais premium */
+}
+
+.modal {
+  background: var(--card-bg, #222); /* Se --card-bg não existir, usa #222 */
+  width: 100%;
+  max-width: 400px;
+  border-radius: 20px;
+  padding: 24px; /* Aumentei um pouco o respiro */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: slideUp 0.3s ease-out; /* Aplicando sua animação */
+}
+
+.modal-container {
+  background: var(--card-bg, #222);
+
+  width: min(400px, calc(100vw - 40px));
+  flex-shrink: 0;
+
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; } /* Suavizei o pulo */
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.hidden {
+  display: none !important; /* !important garante que nada sobressaia o fechamento */
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+#modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+/* BOTÃO FECHAR PREMIUM (Glassmorphism) */
+.close {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  
+  /* Cores e Transparência */
+  font-size: 20px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15); /* Branco suave translúcido */
+  backdrop-filter: blur(8px);           /* Efeito de vidro */
+  -webkit-backdrop-filter: blur(8px);    /* Suporte para Safari */
+  
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover (Pousar o mouse) */
+.close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg); /* Efeito visual elegante ao girar o X */
+}
+
+/* Clique (Toque) */
+.close:active {
+  transform: scale(0.85);
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.1s;
+}
+
+/* Caso o modal seja muito claro, você pode forçar uma borda sutil */
+.close {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+
+
+/* Container do formulário dentro do modal */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Agrupamento de label + input */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+
+/* --- SELETOR DE ÍCONES PRINCIPAL --- */
+.icone-principal-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+  background: var(--transp-branca);
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.icone-principal {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+/* Estado Selecionado (Compartilhado) */
+.icone-principal.selecionado, 
+.icone-item.selecionado {
+  background: var(--cor-cartao, rgba(103, 58, 183, 0.2));
+  color: white;
+  border-color: var(--cor-cartao, var(--cor-primaria));
+  transform: scale(1.1);
+  box-shadow: 0 0 15px var(--cor-cartao, var(--cor-primaria));
+}
+
+.btn-outros {
+  background: none;
+  border: 1px dashed #666;
+  color: #aaa;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-left: auto;
+  transition: 0.2s;
+}
+
+.btn-outros:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* --- MODAL DE SELEÇÃO --- */
+#modalIconesOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000; 
+  backdrop-filter: blur(10px);
+}
+
+.modal-icones {
+  background: var(--bg-modal);
+  width: 90%;
+  max-width: 450px;
+  max-height: 80vh;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Grade de Ícones Otimizada */
+.grade-icones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 5px;
+  margin-top: 15px;
+}
+
+/* Item individual da grade */
+.icone-item {
+  aspect-ratio: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--transp-branca);
+  border-radius: 12px;
+  cursor: pointer;
+  color: #ccc;
+  transition: all 0.2s ease;
+}
+
+.icone-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: translateY(-3px) scale(1.05);
+}
+
+.icone-item .material-icons {
+  font-size: 28px;
+}
+
+/* Scrollbar Customizada */
+.grade-icones::-webkit-scrollbar {
+  width: 6px;
+}
+.grade-icones::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+.hidden { display: none !important; }
+
+
+
+
+/* Container principal da categoria */
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #2a2a2a);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 6px solid var(--cor-cat);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  gap: 12px;
+}
+
+/* Linha do topo: Ícone e Nome */
+.cat-main-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cat-icon-box {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cor-cat);
+}
+
+.cat-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Área das Subcategorias */
+.cat-subs-wrapper {
+  padding-left: 52px; /* Alinha abaixo do texto do nome, pulando o ícone */
+}
+
+.cat-tags-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cat-tag {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #ddd;
+}
+
+/* Botão de excluir subcategoria (o X pequeno) */
+.cat-btn-del-sub {
+  background: none;
+  border: none;
+  color: #ff5555;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Botões de Ação da Categoria */
+.cat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 10px;
+}
+
+.cat-btn-add {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #00aeff;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.cat-btn-add:hover {
+  background: #00aeff22;
+}
+
+.btn-excluir  {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: 0.2s;
+}
+
+.btn-excluir:active {
+  transform: translateY(0);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Container do item de pessoa */
+.pes-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-bg, #2a2a2a);
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: transform 0.2s ease, background 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pes-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Grupo de Info (Avatar + Nome) */
+.pes-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Avatar circular simples com a inicial */
+.pes-avatar {
+  width: 36px;
+  height: 36px;
+  background: #444; /* Cor neutra fixa */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.pes-nome {
+  font-size: 1rem;
+  color: #efefef;
+  font-weight: 500;
+}
+
+/* Mensagem de lista vazia */
+.pes-vazio {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+  font-style: italic;
+}
+
+
+/* Container que segura os dois botões */
+.tipo-container {
+  display: flex;
+  gap: 15px;
+  padding: 10px 0;
+  justify-content: center;
+}
+
+/* Base dos botões de tipo */
+.tipo-container button {
+  flex: 1; /* Faz os dois terem o mesmo tamanho */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 25px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+/* Ícones dentro dos botões */
+.tipo-container .material-symbols-outlined {
+  font-size: 32px;
+  transition: transform 0.2s ease;
+}
+
+/* --- ESTILO RECEITA (Verde) --- */
+.btn-receita {
+  background: rgba(34, 197, 94, 0.1); /* Verde translúcido */
+  border: 1px solid rgba(34, 197, 94, 0.2) !important;
+}
+
+.btn-receita .material-symbols-outlined {
+  color: #22c55e;
+}
+
+.btn-receita:hover {
+  background: rgba(34, 197, 94, 0.2);
+  transform: translateY(-3px);
+}
+
+.btn-receita:active {
+  transform: scale(0.95);
+}
+
+/* --- ESTILO DESPESA (Vermelho) --- */
+.btn-despesa {
+  background: rgba(239, 68, 68, 0.1); /* Vermelho translúcido */
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+.btn-despesa .material-symbols-outlined {
+  color: #ef4444;
+}
+
+.btn-despesa:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-3px);
+}
+
+.btn-despesa:active {
+  transform: scale(0.95);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================
+   CONTAINER LISTA
+========================= */
+#lista-transacoes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+
+/* =========================
+   CARD EXTRATO
+========================= */
+.card-extrato {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+
+  background: linear-gradient(
+    145deg,
+    rgba(255,255,255,0.04),
+    rgba(255,255,255,0.02)
+  );
+
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(6px);
+
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-extrato::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--cor-cat);
+  border-radius: 4px 0 0 4px;
+}
+
+.card-extrato:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+
+/* =========================
+   ÍCONE
+========================= */
+.icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #fff;
+  background: var(--cor-cat);
+
+  box-shadow: 
+    0 6px 18px rgba(0,0,0,0.3),
+    0 0 0 3px rgba(255,255,255,0.03);
+}
+
+.icon-box .material-icons {
+  font-size: 22px;
+}
+
+
+/* =========================
+   CONTEÚDO
+========================= */
+.extrato-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+
+/* =========================
+   LINHA PRINCIPAL
+========================= */
+.extrato-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.extrato-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+
+/* Subcategoria */
+.extrato-sub {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--cor-cat);
+  opacity: 0.9;
+}
+
+
+/* Descrição */
+.extrato-desc {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+
+/* =========================
+   VALOR
+========================= */
+.extrato-amount {
+  font-size: 1.1rem;
+  font-weight: 800;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.extrato-amount.positivo {
+  color: #22c55e;
+}
+
+.extrato-amount.negativo {
+  color: #ef4444;
+}
+
+
+/* =========================
+   LINHA INFERIOR
+========================= */
+.extrato-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+/* Meta info */
+.extrato-meta {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.5);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+
+/* =========================
+   BADGES
+========================= */
+.extrato-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* BADGE CARTÃO */
+.badge-cartao-real {
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-cartao-real .material-icons {
+  font-size: 16px;
+  color: var(--cor-card);
+}
+
+.nome-cartao {
+  color: var(--cor-card);
+}
+
+
+/* BADGE PIX */
+.badge-pix {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-pix.pago {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,0.3);
+}
+
+.badge-pix.pendente {
+  background: rgba(234,179,8,0.15);
+  color: #eab308;
+  border: 1px solid rgba(234,179,8,0.3);
+}
+
+/* BADGE PARCELA */
+.badge-parc {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #aaa;
+  background: rgba(255,255,255,0.05);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.card-receita-simples {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 14px 16px;
+  border-radius: 14px;
+
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.25);
+}
+
+.receita-data {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.6);
+}
+
+.receita-valor {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.card-receita-simples .btn-excluir {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.modal-overlay-confirm {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-confirm-content {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 25px;
+  border-radius: 24px;
+  text-align: center;
+  width: 90%;
+  max-width: 320px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.modal-confirm-icon { font-size: 40px; margin-bottom: 10px; }
+
+.modal-confirm-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-confirm-buttons button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-cancel { background: #333; color: #eee; }
+.btn-confirm { background: #ef4444; color: white; }
+
+.btn-confirm:active { transform: scale(0.95); }
+
+
+
+
+
+
+.form-erro {
+  background: #2b0f0f;
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  border: 1px solid #ff4d4d;
+word-break: break-word; 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================
+   PAGE TRANSAÇÕES - TÍTULO CENTRALIZADO
+========================= */
+#page-transacoes h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+
+/* =========================
+   SELETOR MÊS/ANO
+========================= */
+.mes-selector {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Estilo seguro para PWA */
+.mes-selector select {
+  padding: 10px 14px;
+  border-radius: 12px;
+
+  border: 1px solid rgba(255,255,255,0.1);
+  background-color: #1c1c1e; /* fundo fixo escuro */
+
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  text-align: center;        /* centraliza texto selecionado */
+  text-align-last: center;   /* centraliza texto do item selecionado */
+
+  outline: none;
+}
+
+/* Fundo das opções (IMPORTANTE para não ficar branco) */
+.mes-selector select option {
+  background-color: #1c1c1e;
+  color: #fff;
+}
+
+
+/* =========================
+   LISTA
+========================= */
+#lista-transacoes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+
+
+
+
+/* =========================
+   PAGE DASHBOARD
+========================= */
+
+/* =========================
+   CARD PRINCIPAL
+========================= */
+#page-dashboard .card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+
+  padding: 24px 20px;
+  border-radius: 24px;
+
+  background: linear-gradient(
+    145deg,
+    rgba(255,255,255,0.06),
+    rgba(255,255,255,0.03)
+  );
+
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+}
+
+
+/* =========================
+   SELETOR MÊS + PESSOA
+========================= */
+.mes-selector {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.mes-selector input,
+.mes-selector select {
+  flex: 1;
+
+  padding: 10px 14px;
+  border-radius: 14px;
+
+  border: 1px solid rgba(255,255,255,0.1);
+  background-color: #1c1c1e;
+
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  text-align: center;
+  text-align-last: center;
+
+  outline: none;
+}
+
+/* Corrige ícone do month no dark */
+#mesSelecionado::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Focus elegante */
+.mes-selector input:focus,
+.mes-selector select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
+}
+
+
+/* =========================
+   SALDO TOTAL (PROTAGONISTA)
+========================= */
+.saldo-total {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saldo-total h2 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  margin: 0;
+}
+
+#saldoTotal {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+
+/* =========================
+   RESUMO RECEITA / DESPESA
+========================= */
+.resumo-values {
+  display: flex;
+  gap: 16px;
+}
+
+.resumo-values > div {
+  flex: 1;
+
+  padding: 16px;
+  border-radius: 18px;
+
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+/* Cabeçalho interno */
+.header-valor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+}
+
+.header-valor p {
+  margin: 0;
+}
+
+
+/* Valores */
+.resumo-values h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+
+/* Cores específicas */
+.receita h3 {
+  color: #22c55e;
+}
+
+.despesa h3 {
+  color: #ef4444;
+}
+
+.icon-receita {
+  color: #22c55e;
+}
+
+.icon-despesa {
+  color: #ef4444;
+}
+
+
+/* =========================
+   TOQUE MOBILE
+========================= */
+.resumo-values > div:active {
+  transform: scale(0.97);
+  transition: 0.1s ease;
+}
+
+
+
+
+
+
+/* ========== PARTE DE FATURAS ==========*/
+
+/* ================================
+   RESUMO DE CARTÕES
+================================ */
+
+#resumoCartoes {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.card-cartao {
+  background: linear-gradient(145deg, #1f1f1f, #262626);
+  border-radius: 18px;
+  padding: 18px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.card-cartao:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+}
+
+.card-cartao h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.card-cartao p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #cccccc;
+}
+
+.card-cartao strong {
+  color: #ffffff;
+}
+
+/* ================================
+   CONTAS PENDENTES
+================================ */
+
+#contasPendentes {
+  margin-top: 25px;
+}
+
+#contasPendentes h2 {
+  margin-bottom: 15px;
+}
+
+#contasPendentes h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #ffb74d;
+}
+
+.pendente-item {
+  background: #2a2a2a;
+  border-left: 5px solid #ff9800;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: 0.2s ease;
+}
+
+.pendente-item:hover {
+  background: #323232;
+}
+
+.pendente-item strong {
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.pendente-item p {
+  margin: 0;
+  font-size: 14px;
+  color: #cccccc;
+}
+
+/* ================================
+   BOTÕES
+================================ */
+
+.pendente-item button {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: 0.2s ease;
+}
+
+/* Botão padrão pagar */
+.pendente-item button {
+  background: #4CAF50;
+  color: white;
+}
+
+.pendente-item button:hover {
+  background: #43a047;
+  transform: scale(1.05);
+}
+
+/* ================================
+   INPUT FILE NO MODAL
+================================ */
+
+input[type="file"] {
+  margin-top: 8px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.1);
+  width: 100%;
+}
+
+input[type="file"]::file-selector-button {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: #1e88e5;
+}
+
+/* ================================
+   ESTADO "NENHUMA CONTA"
+================================ */
+
+#contasPendentes p {
+  color: #888;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* ================================
+   DETALHE DA FATURA
+================================ */
+
+.fatura-detalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.fatura-detalhe h2 {
+  margin-bottom: 10px;
+}
+
+/* ================================
+   BLOCO DA PESSOA
+================================ */
+
+.fatura-pessoa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #252525, #1f1f1f);
+  cursor: pointer;
+  transition: 0.25s ease;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.fatura-pessoa:hover {
+  transform: translateX(5px);
+  background: #2e2e2e;
+}
+
+.fatura-pessoa .nome {
+  font-weight: 500;
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.fatura-pessoa .valor {
+  font-weight: bold;
+  font-size: 15px;
+  color: #4CAF50;
+}
+
+/* ================================
+   LISTA DE GASTOS
+================================ */
+
+.fatura-gastos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fatura-gastos h3 {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #ffb74d;
+}
+
+.gasto-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #2a2a2a;
+  transition: 0.2s ease;
+}
+
+.gasto-item:hover {
+  background: #333;
+}
+
+.gasto-item .descricao {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.gasto-item .valor {
+  font-weight: 500;
+  font-size: 14px;
+  color: #cccccc;
+}

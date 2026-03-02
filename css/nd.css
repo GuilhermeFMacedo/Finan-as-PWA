@@ -1,0 +1,20 @@
+// 1. Verificar estrutura do banco
+console.log('Tabelas:', db.tables.map(t => t.name));
+
+// 2. Ver índices da tabela receitas
+const tabelaReceitas = db.tables.find(t => t.name === 'receitas');
+console.log('Índices receitas:', tabelaReceitas.schema.indexes);
+
+// 3. Ver todas as receitas com suas datas em formato legível
+(await db.receitas.toArray()).map(r => ({
+  id: r.id,
+  valor: r.valor,
+  data: r.data ? r.data.toLocaleDateString('pt-BR') : 'invalida',
+  dataOriginal: r.data
+}));
+
+// 4. Testar query do mês atual
+const hoje = new Date();
+const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+await db.receitas.where('data').between(primeiroDia, ultimoDia).toArray();

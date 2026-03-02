@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Finanças</title>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+</head>
+<body>
+
+  <main class="container">
+
+    <section id="page-dashboard" class="page active">
+      <div class="card">
+        <div class="mes-selector">
+          <input type="month" id="mesSelecionado">
+
+          <select id="filtroPessoa">
+            <option value="todas">Todas as Pessoas</option>
+          </select>
+        </div>
+
+        <div class="saldo-total">
+          <h2>Saldo Total</h2>
+          <h1 id="saldoTotal">R$ 0,00</h1>
+        </div>
+
+        <div class="resumo-values">
+          <div class="receita">
+            <div class="header-valor">
+              <span class="material-symbols-outlined icon-receita">arrow_upward</span>
+              <p>Receitas</p>
+            </div>
+            <h3 id="totalReceita">R$ 0,00</h3>
+          </div>
+
+          <div class="despesa">
+            <div class="header-valor">
+              <span class="material-symbols-outlined icon-despesa">arrow_downward</span>
+              <p>Despesas</p>
+            </div>
+            <h3 id="totalDespesa">R$ 0,00</h3>
+          </div>
+        </div>
+      </div>
+      
+      <div id="contasPendentes"></div>
+      
+
+      <div id="listaCartoes" class="cartoes-container">
+  </div>
+
+<div id="modalDetalhesPessoa" class="modal" style="display:none">
+  <div class="modal-content">
+    <span class="close" onclick="fecharModal()">&times;</span>
+    <h3 id="nomePessoaDetalhe"></h3>
+    <div id="listaItensPessoa"></div>
+  </div>
+</div>
+    </section>
+
+    <section id="page-transacoes" class="page">
+      <h2>Transações</h2>
+      <div class="mes-selector">
+        <select id="selMes"></select>
+        <select id="selAno"></select>
+      </div>
+      <div id="lista-transacoes"></div>
+      </section>
+
+    <section id="page-orcamentos" class="page">
+      <h2>Orçamentos</h2>
+      </section>
+
+    <section id="page-config" class="page">
+  <h2>Configurações</h2>
+
+  <button class="config-btn" onclick="trocarPagina('cartoes')">
+    Gerenciar Cartões
+  </button>
+
+  <button class="config-btn" onclick="trocarPagina('categorias')">
+    Gerenciar Categorias
+  </button>
+  
+  <button class="config-btn" onclick="trocarPagina('pessoas')">
+  Gerenciar Pessoas
+  </button>
+
+</section>
+
+<!-- PÁGINA CARTÕES -->
+<section id="page-cartoes" class="page">
+  
+  <div class="page-header">
+    <button class="back-btn" onclick="trocarPagina('config')">←</button>
+    <h2>Cartões</h2>
+  </div>
+  
+  <button class="primary-btn" onclick="adicionarCartao()">
+    Adicionar Cartão
+  </button>
+   <br><br>
+  <div id="lista-cartoes"></div>
+</section>
+
+
+<!-- PÁGINA CATEGORIAS -->
+<section id="page-categorias" class="page">
+  
+  <div class="page-header">
+    <button class="back-btn" onclick="trocarPagina('config')">←</button>
+    <h2>Categorias</h2>
+  </div>
+  
+  <button class="primary-btn" onclick="adicionarCategoria()">
+    Adicionar Categoria
+  </button>
+  <br><br>
+  <div id="lista-categorias"></div>
+</section>
+
+<!-- PÁGINA PESSOAS -->
+<section id="page-pessoas" class="page">
+
+  <div class="page-header">
+    <button class="back-btn" onclick="trocarPagina('config')">←</button>
+    <h2>Pessoas</h2>
+  </div>
+
+  <button class="primary-btn" onclick="adicionarPessoa()">
+    Adicionar Pessoa
+  </button>
+ <br><br>
+  <div id="lista-pessoas"></div>
+
+</section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="dashboard">
+      <span class="material-symbols-outlined">home</span>
+      <small>Dashboard</small>
+    </button>
+
+    <button class="nav-item" data-page="transacoes">
+      <span class="material-symbols-outlined">list_alt</span>
+      <small>Transações</small>
+    </button>
+
+    <button class="nav-item plus-button" id="btnPlus" onclick="abrirModalTipo()">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+
+    <button class="nav-item" data-page="orcamentos">
+      <span class="material-symbols-outlined">bar_chart</span>
+      <small>Orçamento</small>
+    </button>
+
+    <button class="nav-item" data-page="config">
+      <span class="material-symbols-outlined">settings</span>
+      <small>Configuração</small>
+    </button>
+  </nav>
+  
+<!-- MODAL GLOBAL -->
+<div id="modalOverlay" class="modal-overlay hidden">
+  <div class="modal-container">
+
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="close" onclick="fecharModal()">✕</button>
+    </div>
+<div id="formErro" class="form-erro" style="display:none;"></div>
+    <div id="modalBody" class="modal-body"></div>
+
+  </div>
+</div>
+
+<!-- MODAL DOS ICONES DA CATEGORIA -->
+<div id="modalIconesOverlay" class="modal-overlay hidden"> <div class="modal"> <div class="modal-header">
+      <h3 id="modalTitle">Escolha um ícone</h3>
+      <button class="close" onclick="fecharModalIcones()">&times;</button>
+    </div>
+    <div id="listaIconesModal" class="grade-icones"></div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRME A EXCLUSÃO -->
+<div id="modal-confirmacao" class="modal-overlay-confirm" style="display:none;">
+  <div class="modal-confirm-content">
+    <div class="modal-confirm-icon">⚠️</div>
+    <h3>Tem certeza?</h3>
+    <p id="confirm-msg">Esta ação não pode ser desfeita.</p>
+    <div class="modal-confirm-buttons">
+      <button id="btn-cancelar" class="btn-cancel">Cancelar</button>
+      <button id="btn-confirmar" class="btn-confirm">Excluir</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+<script src="js/db.js"></script>
+<script src="js/config.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/transacoes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
