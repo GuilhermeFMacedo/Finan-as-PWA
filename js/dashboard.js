@@ -9,8 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Chamadas iniciais
   atualizarDashboard();
   carregarResumoCartoes();
-  abrirDetalheCartao();
-  abrirDetalhePessoa();
   carregarContasPendentes();
 
   // Listener para mudança de mês

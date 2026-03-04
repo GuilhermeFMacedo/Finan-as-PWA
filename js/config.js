@@ -574,3 +574,128 @@ window.atualizarCorIcone = function () {
 
 
 
+/////////////////////////////////////////
+
+// importar e exportar o db
+
+async function exportarDados() {
+  try {
+
+    limparErro("backupErro");
+
+    const backup = {
+      versaoApp: 1,
+      versaoDB: db.verno,
+      dataExportacao: new Date().toISOString(),
+      dados: {}
+    };
+
+    for (const table of db.tables) {
+      backup.dados[table.name] = await table.toArray();
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(backup, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `financas-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    // ✅ SUCESSO
+    mostrarErro(
+      "Backup exportado com sucesso!",
+      "backupErro",
+      true,
+      "sucesso"
+    );
+
+  } catch (error) {
+    console.error("Erro ao exportar:", error);
+
+    // ❌ ERRO
+    mostrarErro(
+      "Erro ao exportar os dados.",
+      "backupErro",
+      false,
+      "erro"
+    );
+  }
+}
+
+// ⚠️ Essa versão APAGA o banco atual antes de importar.
+
+async function importarDados(file) {
+  try {
+
+    limparErro("backupErro");
+
+    const texto = await file.text();
+    const backup = JSON.parse(texto);
+
+    if (!backup.dados) {
+      mostrarErro("Arquivo inválido.", "backupErro", false, "erro");
+      return;
+    }
+
+    if (backup.versaoDB > db.verno) {
+      mostrarErro(
+        "Este backup foi feito em uma versão mais nova do aplicativo.",
+        "backupErro",
+        false,
+        "erro"
+      );
+      return;
+    }
+
+    confirmarAcao(
+      "Isso apagará TODOS os dados atuais. Deseja continuar?",
+      async () => {
+
+        await db.transaction("rw", db.tables, async () => {
+
+          for (const table of db.tables) {
+            await table.clear();
+          }
+
+          for (const tableName in backup.dados) {
+            if (db.table(tableName)) {
+              await db.table(tableName).bulkAdd(backup.dados[tableName]);
+            }
+          }
+
+        });
+
+        mostrarErro(
+          "Importação concluída com sucesso!",
+          "backupErro",
+          true,
+          "sucesso"
+        );
+
+        console.log("CONFIRMOU");
+
+        setTimeout(() => location.reload(), 1500);
+      }
+    );
+
+  } catch (error) {
+    console.error("Erro ao importar:", error);
+
+    mostrarErro(
+      "Erro ao importar os dados.",
+      "backupErro",
+      false,
+      "erro"
+    );
+  }
+}
+
+
+/////////////////////////////////////////

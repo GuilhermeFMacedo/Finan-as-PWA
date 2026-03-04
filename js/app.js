@@ -19,6 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // 🔽 ADICIONE AQUI
+  const inputBackup = document.getElementById("inputImportarBackup");
+
+  if (inputBackup) {
+    inputBackup.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) importarDados(file);
+    });
+  }
+
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -85,15 +95,46 @@ function perguntarExcluir(titulo, mensagem) {
   });
 }
 
-function mostrarErro(mensagem) {
-  const erroDiv = document.getElementById("formErro");
+function mostrarErro(mensagem, id = "formErro", autoHide = true, tipo = "erro") {
+  const erroDiv = document.getElementById(id);
+  if (!erroDiv) return;
+
+  erroDiv.className = `form-erro ${tipo}`;
   erroDiv.innerText = mensagem;
   erroDiv.style.display = "block";
+
+  if (autoHide) {
+    setTimeout(() => limparErro(id), 3000);
+  }
 }
 
-function limparErro() {
-  const erroDiv = document.getElementById("formErro");
+function limparErro(id = "formErro") {
+  const erroDiv = document.getElementById(id);
+  if (!erroDiv) return;
+
   erroDiv.innerText = "";
   erroDiv.style.display = "none";
 }
 
+let confirmCallback = null;
+
+function confirmarAcao(mensagem, callback) {
+  const overlay = document.getElementById("confirmOverlay");
+  const msg = document.getElementById("confirmMensagem");
+  const btn = document.getElementById("confirmBtn");
+
+  msg.innerText = mensagem;
+  overlay.style.display = "flex";
+
+  confirmCallback = callback;
+
+  btn.onclick = () => {
+    if (confirmCallback) confirmCallback();
+    fecharConfirm();
+  };
+}
+
+function fecharConfirm() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  confirmCallback = null;
+}

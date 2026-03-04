@@ -199,7 +199,10 @@ async function listarTransacoes() {
   // Normalização da Data (Proteção contra Date/String)
   const dataString = typeof t.data === 'string' ? t.data : t.data.toISOString().split('T')[0];
   const dataFormatada = dataString.split("-").reverse().join("/");
-  const valorFormatado = t.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
+  style: 'currency',
+  currency: 'BRL'
+});
 
   // Busca de Dados Relacionados
   const categoria = cats.find(c => c.id === Number(t.categoriaId)) || 
@@ -231,16 +234,24 @@ async function listarTransacoes() {
             <span class="extrato-desc">${t.descricao || (isDespesa ? categoria.nome : 'Receita')}</span>
           </div>
 
-          <div class="extrato-amount ${isDespesa ? 'negativo' : 'positivo'}">
-            ${isDespesa ? '-' : '+'} R$ ${valorFormatado}
+          <div class="extrato-right">
+            <div class="extrato-amount ${isDespesa ? 'negativo' : 'positivo'}">
+              ${isDespesa ? '-' : '+'} ${valorFormatado.replace('R$', '').trim()}
+            </div>
+
+            ${isDespesa && cartaoObj ? `
+              <div class="extrato-cartao">
+                <span class="cartao-dot" style="background:${cartaoObj.cor}"></span>
+                ${cartaoObj.nome}
+              </div>
+            ` : ''}
           </div>
         </div>
 
         <div class="extrato-info-row">
           <div class="extrato-meta">
-            <span>${dataFormatada}</span>
-            <span class="sep">•</span>
-            <span>👤 ${pessoaNome.split(' ')[0]}</span>
+            <span class="meta-data">${dataFormatada}</span>
+            <span class="meta-pessoa">${pessoaNome.split(' ')[0]}</span>
           </div>
 
           <div class="extrato-badges">
@@ -249,10 +260,7 @@ async function listarTransacoes() {
                 ? `<span class="badge-pix ${t.pago ? 'pago' : 'pendente'}">
                     ${t.pago ? 'Pix Pago' : 'Pix Pendente'}
                   </span>`
-                : `<span class="badge-cartao-real">
-                    <span class="material-icons">credit_card</span>
-                    <span class="nome-cartao">${cartaoObj ? cartaoObj.nome : 'Cartão'}</span>
-                  </span>`
+                : ``
               }
               ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
             ` : `
