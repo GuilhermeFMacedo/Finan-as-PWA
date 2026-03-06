@@ -1,3 +1,7 @@
+document.addEventListener("DOMContentLoaded", async () => {
+  await configurarFiltros(); // garante que os selects existam e estejam preenchidos
+});
+
 function abrirModalTipo() {
 
   abrirModal("Nova Transação", `
@@ -144,7 +148,7 @@ async function listarTransacoes() {
   
   if (!lista || !selMes || !selAno) return;
 
-  const mesFiltro = parseInt(selMes.value);
+  const mesFiltro = parseInt(selMes.value); // 0-11
   const anoFiltro = parseInt(selAno.value);
 
   try {
@@ -162,120 +166,107 @@ async function listarTransacoes() {
     const pessMap = new Map(pess.map(p => [p.id, p.nome]));
     const cartMap = new Map(carts.map(c => [c.id, c.nome]));
 
-    // --- FILTRO COM DEBUG ---
+    // --- Normaliza e filtra
     const todas = [
       ...receitas.map(r => ({ ...r, tipo: "receita" })),
       ...despesas.map(d => ({ ...d, tipo: "despesa" }))
     ].filter(t => {
-      // 1. Forçar a data para o início do dia para evitar erros de fuso horário
-      let d;
-      if (typeof t.data === 'string') {
-        // Se a string vier YYYY-MM-DD, o replace garante que o JS não use UTC
-        d = new Date(t.data.replace(/-/g, '\/'));
-      } else {
-        d = new Date(t.data);
-      }
-
-      const m = d.getMonth();
+      // Converte para Date local
+      const d = new Date(t.data);
+      const m = d.getMonth();       // 0-11
       const a = d.getFullYear();
-
-      // DEBUG: Abra o console (F12) e veja se isso aparece
-      if (a === anoFiltro) {
-         console.log(`Transação ID: ${t.id} | Mês: ${m} (Buscando: ${mesFiltro}) | Ano: ${a}`);
-      }
 
       return m === mesFiltro && a === anoFiltro;
     }).sort((a, b) => new Date(b.data) - new Date(a.data));
 
-    // --- RENDERIZAÇÃO ---
+    // --- Renderiza ---
     if (todas.length === 0) {
       lista.innerHTML = `<p class="lista-vazia">Nenhum dado para ${selMes.options[selMes.selectedIndex].text}/${anoFiltro}</p>`;
       return;
     }
 
+    // Função para formatar a data corretamente DD/MM/YYYY
+    function formatarDataLocal(dataInput) {
+      const d = new Date(dataInput);
+      const dia = d.getDate().toString().padStart(2, "0");
+      const mes = (d.getMonth() + 1).toString().padStart(2, "0"); // +1 pq getMonth() é 0-11
+      const ano = d.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
     lista.innerHTML = todas.map(t => {
-  const isDespesa = t.tipo === "despesa";
-  
-  // Normalização da Data (Proteção contra Date/String)
-  const dataString = typeof t.data === 'string' ? t.data : t.data.toISOString().split('T')[0];
-  const dataFormatada = dataString.split("-").reverse().join("/");
-  const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
-  style: 'currency',
-  currency: 'BRL'
-});
+      const isDespesa = t.tipo === "despesa";
 
-  // Busca de Dados Relacionados
-  const categoria = cats.find(c => c.id === Number(t.categoriaId)) || 
-                    { nome: 'Receita', icone: 'payments', cor: '#22c55e' };
-  
-  const subNome = subMap.get(Number(t.subcategoriaId));
-  const pessoaNome = pessMap.get(Number(t.pessoaId)) || 'Ninguém';
-  const cartaoObj = carts.find(c => c.id === Number(t.cartaoId));
+      const dataFormatada = formatarDataLocal(t.data);
+      const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
 
-  // Cores dinâmicas
-  const corDestaque = isDespesa ? (categoria.cor || '#f87171') : '#22c55e';
-  const corBadgeCard = (isDespesa && cartaoObj) ? cartaoObj.cor : 'transparent';
+      const categoria = cats.find(c => c.id === Number(t.categoriaId)) || 
+                        { nome: 'Receita', icone: 'payments', cor: '#22c55e' };
+      
+      const subNome = subMap.get(Number(t.subcategoriaId));
+      const pessoaNome = pessMap.get(Number(t.pessoaId)) || 'Ninguém';
+      const cartaoObj = carts.find(c => c.id === Number(t.cartaoId));
 
-  return `
-    <div class="card-extrato ${t.tipo}" 
-         style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeCard}">
+      const corDestaque = isDespesa ? (categoria.cor || '#f87171') : '#22c55e';
+      const corBadgeCard = (isDespesa && cartaoObj) ? cartaoObj.cor : 'transparent';
 
-      <div class="icon-box">
-        <span class="material-icons">
-          ${isDespesa ? categoria.icone : 'trending_up'}
-        </span>
-      </div>
-
-      <div class="extrato-content">
-        <div class="extrato-main-row">
-          <div class="extrato-texts">
-            ${isDespesa && subNome ? `<span class="extrato-sub">${subNome}</span>` : ''}
-            ${!isDespesa ? `<span class="extrato-sub">Entrada</span>` : ''}
-            <span class="extrato-desc">${t.descricao || (isDespesa ? categoria.nome : 'Receita')}</span>
+      return `
+        <div class="card-extrato ${t.tipo}" style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeCard}">
+          <div class="icon-box">
+            <span class="material-symbols-outlined">
+              ${isDespesa ? categoria.icone : 'trending_up'}
+            </span>
           </div>
 
-          <div class="extrato-right">
-            <div class="extrato-amount ${isDespesa ? 'negativo' : 'positivo'}">
-              ${isDespesa ? '-' : '+'} ${valorFormatado.replace('R$', '').trim()}
+          <div class="extrato-content">
+            <div class="extrato-main-row">
+              <div class="extrato-texts">
+                ${isDespesa && subNome ? `<span class="extrato-sub">${subNome}</span>` : ''}
+                ${!isDespesa ? `<span class="extrato-sub">Entrada</span>` : ''}
+                <span class="extrato-desc">${t.descricao || (isDespesa ? categoria.nome : 'Receita')}</span>
+              </div>
+
+              <div class="extrato-right">
+                <div class="extrato-amount ${isDespesa ? 'negativo' : 'positivo'}">
+                  ${isDespesa ? '-' : '+'} ${valorFormatado.replace('R$', '').trim()}
+                </div>
+
+                ${isDespesa && cartaoObj ? `
+                  <div class="extrato-cartao">
+                    <span class="cartao-dot" style="background:${cartaoObj.cor}"></span>
+                    ${cartaoObj.nome}
+                  </div>
+                ` : ''}
+              </div>
             </div>
 
-            ${isDespesa && cartaoObj ? `
-              <div class="extrato-cartao">
-                <span class="cartao-dot" style="background:${cartaoObj.cor}"></span>
-                ${cartaoObj.nome}
+            <div class="extrato-info-row">
+              <div class="extrato-meta">
+                <span class="meta-data">${dataFormatada}</span>
+                <span class="meta-pessoa">${pessoaNome.split(' ')[0]}</span>
               </div>
-            ` : ''}
+
+              <div class="extrato-badges">
+                ${isDespesa ? `
+                  ${t.formaPagamento === 'pix'
+                    ? `<span class="badge-pix ${t.pago ? 'pago' : 'pendente'}">
+                        ${t.pago ? 'Pix Pago' : 'Pix Pendente'}
+                      </span>` : ''}
+                  ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
+                ` : `<span class="badge-receita">Depósito</span>`}
+
+                <button class="btn-excluir" onclick="excluirTransacao(${t.id}, '${t.tipo}')">
+                  <span class="material-symbols-outlined">delete_outline</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="extrato-info-row">
-          <div class="extrato-meta">
-            <span class="meta-data">${dataFormatada}</span>
-            <span class="meta-pessoa">${pessoaNome.split(' ')[0]}</span>
-          </div>
-
-          <div class="extrato-badges">
-            ${isDespesa ? `
-              ${t.formaPagamento === 'pix'
-                ? `<span class="badge-pix ${t.pago ? 'pago' : 'pendente'}">
-                    ${t.pago ? 'Pix Pago' : 'Pix Pendente'}
-                  </span>`
-                : ``
-              }
-              ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
-            ` : `
-              <span class="badge-receita">Depósito</span>
-            `}
-
-            <button class="btn-excluir" onclick="excluirTransacao(${t.id}, '${t.tipo}')">
-              <span class="material-icons">delete_outline</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}).join('');
+      `;
+    }).join('');
 
   } catch (error) {
     console.error("Erro na listagem:", error);
@@ -318,7 +309,9 @@ async function excluirTransacao(id, tipo) {
     // 5. Atualizar a interface
     await Promise.all([
       atualizarDashboard(),
-      listarTransacoes()
+      listarTransacoes(),
+      carregarResumoCartoes(),
+      carregarContasPendentes()
     ]);
     
   } catch (error) {
@@ -333,7 +326,6 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarCategorias();
   carregarPessoas();
   carregarCartoes();
-
   const selectCategoria = document.getElementById("categoria");
 
   if (selectCategoria) {
@@ -643,7 +635,8 @@ async function salvarDespesa() {
 
     // 5. Finalização
     fecharModal();
-    await Promise.all([atualizarDashboard(), listarTransacoes()]);
+    await Promise.all([atualizarDashboard(), listarTransacoes(), carregarResumoCartoes(),
+    carregarContasPendentes()]);
     
     if (typeof listarCartoes === "function") listarCartoes();
 

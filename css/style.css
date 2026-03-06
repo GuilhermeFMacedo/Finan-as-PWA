@@ -31,16 +31,39 @@ body {
   margin: 0 auto;
 }
 
+@font-face {
+  font-family: "Material Symbols Outlined";
+  src: url("../fonts/material-symbols.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
 
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-block;
+  line-height: 1;
+  letter-spacing: normal;
+  white-space: nowrap;
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24;
+}
 
-
-
-
-
-
-
-
-
+.config-grupo{
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  opacity: 0.7;
+}
 
 
 
@@ -63,17 +86,6 @@ body {
   align-items: center;
   margin-bottom: 18px;
 }
-
-/* TÍTULO */
-
-#modalTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: white;
-  letter-spacing: 0.3px;
-}
-
-
 
 /* =========================
    INPUTS - MODAL
@@ -161,14 +173,9 @@ body {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  cursor: pointer;
+   
   box-shadow: 0 8px 20px rgba(103, 58, 183, 0.35);
   transition: all 0.2s ease;
-}
-
-/* Hover desktop */
-.save-btn:hover {
-  filter: brightness(1.05);
 }
 
 /* Clique */
@@ -202,7 +209,7 @@ body {
   border-radius: 50%;
   border: none;
   padding: 0;
-  cursor: pointer;
+   
   background: none;
 }
 
@@ -238,7 +245,7 @@ body {
   background: #ddd;
   border-radius: 20px;
   position: relative;
-  cursor: pointer;
+   
   transition: background 0.3s ease;
   outline: none;
 }
@@ -316,7 +323,7 @@ body {
   color: var(--primary);
   font-size: 1.5rem;
   margin-right: 15px;
-  cursor: pointer;
+   
 }
 
 
@@ -334,7 +341,7 @@ body {
   color: var(--text-main);
   font-size: 1rem;
   font-weight: 500;
-  cursor: pointer;
+   
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
@@ -394,7 +401,7 @@ body {
   border-radius: 12px;
   color: white;
   font-weight: bold;
-  cursor: pointer;
+   
 }
 
 /* NAVBAR MODERNA */
@@ -423,7 +430,7 @@ body {
   align-items: center;
   gap: 4px;
   font-size: 0.7rem;
-  cursor: pointer;
+   
   transition: 0.3s;
   flex: 1;
 }
@@ -584,7 +591,7 @@ body {
 }
 
 #modalTitle {
-  font-size: 18px;
+  font-size: 1.6rem;
   font-weight: 600;
   color: white;
   letter-spacing: 0.3px;
@@ -608,15 +615,9 @@ body {
   backdrop-filter: blur(8px);           /* Efeito de vidro */
   -webkit-backdrop-filter: blur(8px);    /* Suporte para Safari */
   
-  cursor: pointer;
+   
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Hover (Pousar o mouse) */
-.close:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: rotate(90deg); /* Efeito visual elegante ao girar o X */
 }
 
 /* Clique (Toque) */
@@ -631,7 +632,67 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Mensagem */
+.modal p {
+  margin: 0 0 20px 0;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.85);
+}
 
+/* Ações */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Botões padrão */
+.modal-actions button {
+  flex: 1 1 120px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+   
+  border: none;
+  transition: all 0.2s ease;
+}
+
+/* Botão cancelar */
+.btn-cancelarImportar {
+  background-color: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* Botão confirmar */
+.btn-aceitarImportar {
+  background-color: #22c55e; /* verde estilo Tailwind */
+  color: #fff;
+}
+
+/* Animação de entrada */
+@keyframes modalFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .modal {
+    padding: 20px 16px;
+  }
+
+  .modal-actions button {
+    flex: 1 1 100%;
+  }
+}
 
 
 /* Container do formulário dentro do modal */
@@ -655,6 +716,111 @@ body {
   font-weight: 500;
 }
 
+/* =========================
+   MODAL DE CONFIRMAÇÃO
+========================= */
+
+/* Overlay (fundo escuro semi-transparente) */
+.modal-overlay-confirm {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Conteúdo do modal */
+.modal-confirm-content {
+  background-color: #1c1c1e;
+  border-radius: 20px;
+  padding: 28px 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  text-align: center;
+  color: #fff;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+/* Icone do modal */
+.modal-confirm-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+/* Título */
+.modal-confirm-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+/* Mensagem */
+.modal-confirm-content p {
+  margin: 0 0 20px 0;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.8);
+}
+
+/* Botões */
+.modal-confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.modal-confirm-buttons button {
+  flex: 1 1 120px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+   
+  border: none;
+  transition: all 0.2s ease;
+}
+
+/* Botão cancelar */
+.btn-cancel {
+  background-color: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* Botão confirmar */
+.btn-confirm {
+  background-color: #ef4444; /* vermelho estilo Tailwind */
+  color: #fff;
+}
+
+/* Animação de entrada */
+@keyframes modalFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .modal-confirm-content {
+    padding: 20px 16px;
+  }
+
+  .modal-confirm-buttons button {
+    flex: 1 1 100%;
+  }
+}
 
 /* --- SELETOR DE ÍCONES PRINCIPAL --- */
 .icone-principal-wrapper {
@@ -674,7 +840,7 @@ body {
   justify-content: center;
   align-items: center;
   border-radius: 10px;
-  cursor: pointer;
+   
   background: rgba(255, 255, 255, 0.1);
   color: #888;
   transition: all 0.2s ease;
@@ -697,15 +863,10 @@ body {
   color: #aaa;
   padding: 8px 12px;
   border-radius: 8px;
-  cursor: pointer;
+   
   font-size: 13px;
   margin-left: auto;
   transition: 0.2s;
-}
-
-.btn-outros:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
 }
 
 /* --- MODAL DE SELEÇÃO --- */
@@ -727,43 +888,62 @@ body {
   max-height: 80vh;
   border-radius: 20px;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
+  display: block;
+
 }
 
 /* Grade de Ícones Otimizada */
-.grade-icones {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  gap: 12px;
+.grupo-icones {
+  width: 100%;
+  display: block;
+  margin-bottom: 20px;
+  flex-basis: 100%;
+}
+
+.titulo-grupo{
+  margin-bottom:8px;
+}
+
+.grade-icones{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+}
+
+.lista-grupos-icones {
+  display: block;
+
+  gap: 20px;
+
   max-height: 60vh;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: 10px 5px;
-  margin-top: 15px;
 }
 
 /* Item individual da grade */
 .icone-item {
-  aspect-ratio: 1;
+  width: 48px;
+  height: 48px;
+
   display: flex;
   justify-content: center;
   align-items: center;
+
   background: var(--transp-branca);
   border-radius: 12px;
-  cursor: pointer;
+
   color: #ccc;
-  transition: all 0.2s ease;
+  cursor: pointer;
+
+  transition: 0.15s;
 }
 
-.icone-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  transform: translateY(-3px) scale(1.05);
+.icone-item:active {
+  background: rgba(255,255,255,0.12);
+  transform: scale(1.08);
 }
 
-.icone-item .material-icons {
-  font-size: 28px;
+.icone-item .material-symbols-outlined {
+  font-size: 24px;
 }
 
 /* Scrollbar Customizada */
@@ -777,8 +957,14 @@ body {
 
 .hidden { display: none !important; }
 
-
-
+.grupo-icones h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.6;
+  margin: 18px 4px 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
 
 /* Container principal da categoria */
 .cat-card {
@@ -846,7 +1032,7 @@ body {
   border: none;
   color: #ff5555;
   font-weight: bold;
-  cursor: pointer;
+   
   padding: 0;
   font-size: 1rem;
   line-height: 1;
@@ -868,19 +1054,15 @@ body {
   padding: 5px 12px;
   border-radius: 6px;
   font-size: 0.85rem;
-  cursor: pointer;
+   
   transition: 0.2s;
-}
-
-.cat-btn-add:hover {
-  background: #00aeff22;
 }
 
 .btn-excluir  {
   background: none;
   border: none;
   font-size: 1.1rem;
-  cursor: pointer;
+   
   opacity: 0.6;
   transition: 0.2s;
   flex-shrink: 0;
@@ -903,10 +1085,6 @@ body {
   margin-bottom: 8px;
   transition: transform 0.2s ease, background 0.2s ease;
   border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.pes-item:hover {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Grupo de Info (Avatar + Nome) */
@@ -965,7 +1143,7 @@ body {
   padding: 25px 15px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  cursor: pointer;
+   
   font-size: 1rem;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -988,11 +1166,6 @@ body {
   color: #22c55e;
 }
 
-.btn-receita:hover {
-  background: rgba(34, 197, 94, 0.2);
-  transform: translateY(-3px);
-}
-
 .btn-receita:active {
   transform: scale(0.95);
 }
@@ -1005,11 +1178,6 @@ body {
 
 .btn-despesa .material-symbols-outlined {
   color: #ef4444;
-}
-
-.btn-despesa:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: translateY(-3px);
 }
 
 .btn-despesa:active {
@@ -1099,7 +1267,7 @@ body {
     0 0 0 3px rgba(255,255,255,0.03);
 }
 
-.icon-box .material-icons {
+.icon-box .material-symbols-outlined {
   font-size: 22px;
 }
 
@@ -1179,7 +1347,7 @@ body {
   border-radius: 2px;
 }
 
-.extrato-cartao .material-icons {
+.extrato-cartao .material-symbols-outlined {
   font-size: 16px;
 }
 
@@ -1258,7 +1426,7 @@ body {
   font-weight: 600;
 }
 
-.badge-cartao-real .material-icons {
+.badge-cartao-real .material-symbols-outlined {
   font-size: 16px;
   color: var(--cor-card);
 }
@@ -1327,7 +1495,7 @@ body {
 .card-receita-simples .btn-excluir {
   background: none;
   border: none;
-  cursor: pointer;
+   
   opacity: 0.6;
 }
 
@@ -1349,51 +1517,6 @@ body {
 
 
 
-
-.modal-overlay-confirm {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(5px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.modal-confirm-content {
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 25px;
-  border-radius: 24px;
-  text-align: center;
-  width: 90%;
-  max-width: 320px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-}
-
-.modal-confirm-icon { font-size: 40px; margin-bottom: 10px; }
-
-.modal-confirm-buttons {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.modal-confirm-buttons button {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn-cancel { background: #333; color: #eee; }
-.btn-confirm { background: #ef4444; color: white; }
-
-.btn-confirm:active { transform: scale(0.95); }
 
 
 
@@ -1532,7 +1655,7 @@ word-break: break-word;
 /* Corrige ícone do input month no modo escuro */
 #mesSelecionado::-webkit-calendar-picker-indicator {
   filter: invert(1);
-  cursor: pointer;
+   
 }
 
 /* Focus elegante */
@@ -1581,49 +1704,39 @@ word-break: break-word;
 /* =========================
    RESUMO RECEITA / DESPESA
 ========================= */
-.resumo-values {
-  display: flex;
-  gap: 16px;
-}
 
-.resumo-values > div {
+.resumo-values { display: flex; gap: 16px; width: 100%; max-width: 100%; }
+.resumo-values > div { 
   flex: 1;
-
-  padding: 16px;
-  border-radius: 18px;
-
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+  min-width: 0;
+  padding: 16px; 
+  border-radius: 18px; 
+  background: rgba(255,255,255,0.04); 
+  border: 1px solid rgba(255,255,255,0.06); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+} 
+.resumo-values h3 { margin: 0; font-size: 1.2rem; font-weight: 700; } 
+.resumo-values > div:active { transform: scale(0.97); transition: 0.1s ease; }
 
 /* Cabeçalho interno */
+
 .header-valor {
   display: flex;
   align-items: center;
   gap: 6px;
-
   font-size: 0.8rem;
   font-weight: 600;
   color: rgba(255,255,255,0.6);
+  width: 100%;
+  min-width: 0;
 }
 
 .header-valor p {
   margin: 0;
+  min-width: 0;
 }
-
-
-/* Valores */
-.resumo-values h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
 
 /* Cores específicas */
 .receita h3 {
@@ -1642,136 +1755,172 @@ word-break: break-word;
   color: #ef4444;
 }
 
-
-/* =========================
-   TOQUE MOBILE
-========================= */
-.resumo-values > div:active {
-  transform: scale(0.97);
-  transition: 0.1s ease;
-}
-
-
-
-
-
-
 /* ========== PARTE DE FATURAS ==========*/
 
 /* ================================
    RESUMO DE CARTÕES
 ================================ */
 
-#resumoCartoes {
+.secao-cartoes {
+  background: linear-gradient(145deg, #161616, #1d1d1d);
+  border-radius: 20px;
+  /* Espaçamento interno fixo de 15px em todos os lados */
+  padding: 15px; 
+  margin-top: 15px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.secao-header h2 {
+  /* Removemos a margem superior para não somar com o padding de 15px do container */
+  margin-top: 0;
+  /* Margem de 15px inferior para separar do conteúdo abaixo */
+  margin-bottom: 15px; 
+  text-align: center;
+  font-size: 1.5rem; /* Ajuste opcional de tamanho */
+}
+
+.cartoes-container {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin-top: 15px;
+  gap: 12px;
 }
 
 .card-cartao {
-  background: linear-gradient(145deg, #1f1f1f, #262626);
+
+  background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
+
   border-radius: 18px;
   padding: 18px;
-  cursor: pointer;
-  transition: 0.3s ease;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+
   border: 1px solid rgba(255,255,255,0.05);
+
+  transition: 0.25s;
+
+  box-shadow:
+    0 6px 18px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+
+}
+.cartao-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.card-cartao:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+.cartao-topo h3 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 17px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+
+}
+.status-fatura {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
 }
 
-.card-cartao h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
+.status-fatura.aberta {
+  background: rgba(255,193,7,0.15);
+  color: #ffc107;
+}
+
+.status-fatura.fechada {
+  background: rgba(76,175,80,0.15);
+  color: #4caf50;
+}
+
+.valor-fatura {
+
+  font-size: 22px;
+  font-weight: 700;
+
+  margin-top: 8px;
+  margin-bottom: 4px;
+
   color: #ffffff;
 }
 
-.card-cartao p {
-  margin: 4px 0;
-  font-size: 14px;
-  color: #cccccc;
+.limite-info {
+
+  font-size: 13px;
+  color: #bfbfbf;
+
+  margin-bottom: 8px;
+}
+.barra-limite {
+
+  width: 100%;
+  height: 8px;
+
+  background: rgba(255,255,255,0.08);
+
+  border-radius: 10px;
+  overflow: hidden;
+
+  margin-bottom: 6px;
 }
 
-.card-cartao strong {
-  color: #ffffff;
+.barra-usada {
+
+  height: 100%;
+
+  background: linear-gradient(
+    90deg,
+    #ff9800,
+    #ff5722
+  );
+
+  border-radius: 10px;
+
+  transition: width 0.4s ease;
 }
 
+.limite-disponivel {
+
+  font-size: 12px;
+  color: #9e9e9e;
+}
 /* ================================
    CONTAS PENDENTES
 ================================ */
 
 #contasPendentes {
-  margin-top: 25px;
+  margin-top: 15px;
+  background: linear-gradient(145deg, #1f1f1f, #262626);
+  border-radius: 18px;
+  padding: 18px;
+  transition: transform 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#contasPendentes:active {
+  transform: scale(0.98);
+  background: #2a2a2a;
 }
 
 #contasPendentes h2 {
-  margin-bottom: 15px;
+  margin-bottom: 0px;
+  margin-top: 0px;
+  text-align: center;
 }
 
-#contasPendentes h3 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-size: 16px;
-  color: #ffb74d;
-}
 
-.pendente-item {
-  background: #2a2a2a;
-  border-left: 5px solid #ff9800;
-  padding: 15px;
-  margin-bottom: 12px;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: 0.2s ease;
-}
-
-.pendente-item:hover {
-  background: #323232;
-}
-
-.pendente-item strong {
-  font-size: 15px;
-  color: #ffffff;
-}
-
-.pendente-item p {
-  margin: 0;
+#contasPendentes p {
+  color: #888;
   font-size: 14px;
-  color: #cccccc;
+  margin-top: 10px;
+  width: 100%;
+  text-align: center;
 }
 
-/* ================================
-   BOTÕES
-================================ */
 
-.pendente-item button {
-  align-self: flex-start;
-  margin-top: 8px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: 0.2s ease;
-}
-
-/* Botão padrão pagar */
-.pendente-item button {
-  background: #4CAF50;
-  color: white;
-}
-
-.pendente-item button:hover {
-  background: #43a047;
-  transform: scale(1.05);
-}
 
 /* ================================
    INPUT FILE NO MODAL
@@ -1793,23 +1942,10 @@ input[type="file"]::file-selector-button {
   border: none;
   padding: 6px 12px;
   border-radius: 6px;
-  cursor: pointer;
+   
   margin-right: 8px;
 }
 
-input[type="file"]::file-selector-button:hover {
-  background: #1e88e5;
-}
-
-/* ================================
-   ESTADO "NENHUMA CONTA"
-================================ */
-
-#contasPendentes p {
-  color: #888;
-  font-size: 14px;
-  margin-top: 10px;
-}
 
 /* ================================
    DETALHE DA FATURA
@@ -1819,6 +1955,8 @@ input[type="file"]::file-selector-button:hover {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .fatura-detalhe h2 {
@@ -1836,14 +1974,10 @@ input[type="file"]::file-selector-button:hover {
   padding: 14px 16px;
   border-radius: 14px;
   background: linear-gradient(145deg, #252525, #1f1f1f);
-  cursor: pointer;
+   
   transition: 0.25s ease;
   border: 1px solid rgba(255,255,255,0.05);
-}
-
-.fatura-pessoa:hover {
-  transform: translateX(5px);
-  background: #2e2e2e;
+  min-width: 0; /* ESSENCIAL */
 }
 
 .fatura-pessoa .nome {
@@ -1866,12 +2000,8 @@ input[type="file"]::file-selector-button:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.fatura-gastos h3 {
-  margin-bottom: 10px;
-  font-size: 16px;
-  color: #ffb74d;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .gasto-item {
@@ -1882,10 +2012,7 @@ input[type="file"]::file-selector-button:hover {
   border-radius: 12px;
   background: #2a2a2a;
   transition: 0.2s ease;
-}
-
-.gasto-item:hover {
-  background: #333;
+  min-width: 0; /* ESSENCIAL */
 }
 
 .gasto-item .descricao {
@@ -1926,4 +2053,198 @@ input[type="file"]::file-selector-button:hover {
 .danger-btn {
   background: #b00020;
   color: #fff;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================
+   MODAL DE PAGAMENTO (PIX + FATURA)
+========================= */
+/* Centralizando tudo que é texto no topo */
+/* CONTAINER GERAL DO MODAL */
+.modal-pagamento-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 25px 20px;
+}
+
+/* TÍTULO */
+.modal-pagamento-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+}
+
+/* VALOR */
+.modal-pagamento-valor {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 8px 18px;
+  border-radius: 999px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* LABEL */
+.modal-pagamento-label {
+  font-size: 0.95rem;
+  opacity: 0.7;
+  margin-top: 5px;
+}
+
+/* INPUT REAL (ESCONDIDO) */
+.modal-pagamento-input-file {
+  display: none;
+}
+
+/* BOTÃO DE ESCOLHER ARQUIVO */
+.modal-pagamento-btn-file {
+  width: 100%;
+  max-width: none;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  font-weight: 600;
+  border: none;
+   
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-pagamento-btn-file:active {
+  transform: scale(0.97);
+}
+
+/* BOTÃO CONFIRMAR */
+.modal-pagamento-btn-confirmar {
+  width: 100%;
+  max-width: none;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  border: none;
+   
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.modal-pagamento-btn-confirmar:active {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+.modal-pagamento-btn-confirmar:active {
+  transform: scale(0.97);
+}
+
+
+/* =========================
+   CONTAS PENDENTES - CARROSSEL
+========================= */
+
+.pendentes-wrapper {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto; /* Permite o deslize */
+  scroll-snap-type: x mandatory; /* Força a "trava" no card */
+  margin: 15px;
+  -webkit-overflow-scrolling: touch; /* Suavidade no iOS */
+  scrollbar-width: none; /* Esconde scroll no Firefox */
+}
+
+.pendentes-wrapper::-webkit-scrollbar {
+  display: none; /* Esconde scroll no Chrome/Safari */
+}
+
+.pendente-item {
+  /* Cálculo preciso: 33.33% menos a compensação dos espaços (gaps) */
+  flex: 0 0 calc((100% / 3) - 8px); 
+  
+  scroll-snap-align: start; /* Onde o card "gruda" ao soltar o dedo */
+  box-sizing: border-box; /* Essencial para o padding não quebrar a largura */
+  
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-radius: 16px;
+  padding: 12px 8px;
+  border-left: 4px solid #ff9800;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* Título */
+.pendente-item strong {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+/* Valor */
+.pendente-item p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: bold;
+  color: #4caf50;
+}
+
+/* Botão */
+.pendente-item button {
+  margin-top: 6px;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #ff9800;
+  color: #000;
+  font-weight: bold;
+   
+  transition: 0.2s ease;
+}
+
+
+
+
+/* Ajuste para a lista de histórico */
+.historico-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 20px;
+}
+
+.btn-ver-comprovante {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    align-self: flex-start;
+    margin-top: 5px;
 }

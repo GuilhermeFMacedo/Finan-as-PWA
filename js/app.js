@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 🔽 ADICIONE AQUI
   const inputBackup = document.getElementById("inputImportarBackup");
 
   if (inputBackup) {
@@ -58,6 +57,7 @@ function trocarPagina(page) {
   if (page === "categorias") listarCategorias();
   if (page === "transacoes") listarTransacoes(), configurarFiltros();
   if (page === "pessoas") listarPessoas();
+  if (page === "historico") abrirHistorico();
 }
 
 function abrirModal(titulo, conteudoHTML) {

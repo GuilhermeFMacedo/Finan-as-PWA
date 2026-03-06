@@ -66,7 +66,7 @@ async function atualizarDashboard() {
       // Filtro de Data
       const dataItem = new Date(item.data);
       if (typeof item.data === 'string' && !item.data.includes('T')) {
-          dataItem.setHours(dataItem.getHours() + 12); 
+        dataItem.setHours(dataItem.getHours() + 12);
       }
       const estaNoMes = dataItem >= inicio && dataItem <= fim;
 
@@ -96,7 +96,7 @@ async function atualizarDashboard() {
 function popularFiltroPessoas(pessoas) {
   const select = document.getElementById("filtroPessoa");
   // Se já tiver mais de uma opção (a "Todas"), não precisa reconstruir tudo sempre
-  if (select.options.length > 1) return; 
+  if (select.options.length > 1) return;
 
   pessoas.forEach(p => {
     const opt = document.createElement("option");
@@ -113,9 +113,6 @@ function formatarMoeda(valor) {
     currency: 'BRL'
   });
 }
-
-
-
 
 async function carregarResumoCartoes() {
 
@@ -173,13 +170,33 @@ async function carregarResumoCartoes() {
     const status = faturaFechada ? "Fechada" : "Aberta";
 
     // 🎨 Render
+    const porcentagem = Math.min((limiteGasto / cartao.limite) * 100, 100);
+
     container.innerHTML += `
-      <div class="card-cartao" onclick="abrirDetalheCartao(${cartao.id}, '${mesInput}')">
+    <div class="card-cartao" onclick="abrirDetalheCartao(${cartao.id}, '${mesInput}')">
+
+      <div class="cartao-topo">
         <h3>${cartao.nome}</h3>
-        <p><strong>Fatura ${status}:</strong> ${formatarMoeda(totalFatura)}</p>
-        <p>Limite usado: ${formatarMoeda(limiteGasto)}</p>
-        <p>Disponível: ${formatarMoeda(limiteDisponivel)}</p>
+        <span class="status-fatura ${status.toLowerCase()}">${status}</span>
       </div>
+
+      <div class="valor-fatura">
+        ${formatarMoeda(totalFatura)}
+      </div>
+
+      <div class="limite-info">
+        ${formatarMoeda(limiteGasto)} de ${formatarMoeda(cartao.limite)}
+      </div>
+
+      <div class="barra-limite">
+        <div class="barra-usada" style="width:${porcentagem}%"></div>
+      </div>
+
+      <div class="limite-disponivel">
+        Disponível: ${formatarMoeda(limiteDisponivel)}
+      </div>
+
+    </div>
     `;
   }
 }
@@ -217,19 +234,19 @@ async function abrirDetalheCartao(cartaoId, mesInput) {
   <h2>Detalhes da Fatura</h2>
 `;
 
-for (const pessoaId in agrupadoPorPessoa) {
-  const pessoa = pessoas.find(p => p.id == pessoaId);
+  for (const pessoaId in agrupadoPorPessoa) {
+    const pessoa = pessoas.find(p => p.id == pessoaId);
 
-  html += `
+    html += `
     <div class="fatura-pessoa"
          onclick="abrirDetalhePessoa(${cartaoId}, ${pessoaId}, '${mesInput}')">
       <span class="nome">${pessoa.nome}</span>
       <span class="valor">${formatarMoeda(agrupadoPorPessoa[pessoaId])}</span>
     </div>
   `;
-}
+  }
 
-html += `</div>`;
+  html += `</div>`;
 
   abrirModal("Fatura do Cartão", html);
 }
@@ -260,8 +277,8 @@ async function abrirDetalhePessoa(cartaoId, pessoaId, mesInput) {
   <h3>Gastos</h3>
 `;
 
-despesasFiltradas.forEach(d => {
-  html += `
+  despesasFiltradas.forEach(d => {
+    html += `
     <div class="gasto-item">
       <span class="descricao">
         ${d.descricao || "Sem descrição"}
@@ -271,9 +288,9 @@ despesasFiltradas.forEach(d => {
       </span>
     </div>
   `;
-});
+  });
 
-html += `</div>`;
+  html += `</div>`;
 
   abrirModal("Detalhe da Pessoa", html);
 }
@@ -412,15 +429,21 @@ async function carregarContasPendentes() {
   const container = document.getElementById("contasPendentes");
   container.innerHTML = "<h2>Contas Pendentes</h2>";
 
+  const wrapper = document.createElement("div");
+  wrapper.className = "pendentes-wrapper";
+  container.appendChild(wrapper);
+
   const [despesas, cartoes, pagamentosFatura] = await Promise.all([
     db.despesas.toArray(),
     db.cartoes.toArray(),
     db.pagamentosFatura.toArray()
   ]);
 
-  // ============================
-  // 1️⃣ PIX NÃO PAGOS
-  // ============================
+  let pendencias = [];
+
+  // =========================
+  // PIX NÃO PAGOS
+  // =========================
 
   const pixNaoPagos = despesas.filter(d => {
     if (d.formaPagamento !== "pix") return false;
@@ -431,34 +454,38 @@ async function carregarContasPendentes() {
            data.getMonth() === mes - 1;
   });
 
-  if (pixNaoPagos.length > 0) {
-    container.innerHTML += "<h3>Pix Pendentes</h3>";
+  pixNaoPagos.forEach(d => {
 
-    pixNaoPagos.forEach(d => {
-      container.innerHTML += `
+    const dataVencimento = new Date(d.data);
+
+    pendencias.push({
+      data: dataVencimento,
+      html: `
         <div class="pendente-item">
           <strong>${d.descricao || "Sem descrição"}</strong>
+          <small>Vence dia ${dataVencimento.getDate()}</small>
           <p>${formatarMoeda(Number(d.valor))}</p>
           <button onclick="abrirModalPagamentoPix(${d.id})">
             Pagar
           </button>
         </div>
-      `;
+      `
     });
-  }
 
-  // ============================
-  // 2️⃣ FATURAS FECHADAS NÃO PAGAS
-  // ============================
+  });
+
+  // =========================
+  // FATURAS
+  // =========================
 
   for (const cartao of cartoes) {
 
     const diaFechamento = Number(cartao.fechamento);
+    const diaVencimento = Number(cartao.vencimento);
 
     const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
     const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-    // Verifica se já foi paga
     const jaPaga = pagamentosFatura.find(p =>
       p.cartaoId === cartao.id &&
       p.ano === ano &&
@@ -467,7 +494,6 @@ async function carregarContasPendentes() {
 
     if (jaPaga) continue;
 
-    // Verifica se está fechada
     const estaNoMesAtual =
       hoje.getFullYear() === ano &&
       hoje.getMonth() === mes - 1;
@@ -482,7 +508,6 @@ async function carregarContasPendentes() {
 
     if (!faturaFechada) continue;
 
-    // Calcula valor da fatura
     const despesasCartao = despesas.filter(d => {
       if (d.cartaoId !== cartao.id) return false;
       if (d.formaPagamento !== "cartao") return false;
@@ -498,24 +523,43 @@ async function carregarContasPendentes() {
 
     if (totalFatura === 0) continue;
 
-    container.innerHTML += `
-      <div class="pendente-item">
-        <strong>Fatura ${cartao.nome}</strong>
-        <p>${formatarMoeda(totalFatura)}</p>
-        <button onclick="abrirModalPagamentoFatura(${cartao.id}, '${mesInput}')">
-          Pagar Fatura
-        </button>
-      </div>
-    `;
+    const dataVencimento = new Date(ano, mes - 1, diaVencimento);
+
+    pendencias.push({
+      data: dataVencimento,
+      html: `
+        <div class="pendente-item">
+          <strong>${cartao.nome}</strong>
+          <small>Vence dia ${diaVencimento}</small>
+          <p>${formatarMoeda(totalFatura)}</p>
+          <button onclick="abrirModalPagamentoFatura(${cartao.id}, '${mesInput}')">
+            Pagar
+          </button>
+        </div>
+      `
+    });
+
   }
 
-  if (container.innerHTML === "<h2>Contas Pendentes</h2>") {
-    container.innerHTML += "<p>🎉 Nenhuma conta pendente!</p>";
+  // =========================
+  // ORDENAR PELO VENCIMENTO
+  // =========================
+
+  pendencias.sort((a, b) => a.data - b.data);
+
+  // =========================
+  // RENDER FINAL
+  // =========================
+
+  if (pendencias.length === 0) {
+    wrapper.innerHTML = "<p>🎉 Nenhuma conta pendente!</p>";
+  } else {
+    wrapper.innerHTML = pendencias.map(p => p.html).join("");
   }
+
 }
 
 async function abrirModalPagamentoFatura(cartaoId, mesInput) {
-
   const [ano, mes] = mesInput.split("-").map(Number);
   const cartao = await db.cartoes.get(cartaoId);
 
@@ -524,156 +568,162 @@ async function abrirModalPagamentoFatura(cartaoId, mesInput) {
   const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
   const despesas = await db.despesas.where("cartaoId").equals(cartaoId).toArray();
-
-  const despesasCiclo = despesas.filter(d => {
-    if (d.formaPagamento !== "cartao") return false;
-    const data = new Date(d.data);
-    return data >= dataInicio && data <= dataFim;
-  });
-
-  const totalFatura = despesasCiclo.reduce(
-    (acc, d) => acc + Number(d.valor),
-    0
-  );
+  const despesasCiclo = despesas.filter(d => d.formaPagamento === "cartao" && new Date(d.data) >= dataInicio && new Date(d.data) <= dataFim);
+  const totalFatura = despesasCiclo.reduce((acc, d) => acc + Number(d.valor), 0);
 
   const html = `
-    <h2>Pagar Fatura - ${cartao.nome}</h2>
-    <p><strong>Valor:</strong> ${formatarMoeda(totalFatura)}</p>
+    <h2 class="modal-pagamento-title">Cartão: ${cartao.nome}</h2>
+    <p class="modal-pagamento-valor"><strong>Valor: </strong> ${formatarMoeda(totalFatura)}</p>
+<br>
+  <label class="modal-pagamento-label">Comprovante:</label>
+  <div class="modal-pagamento-file-wrapper">
+    <span class="modal-pagamento-btn-file">Escolher arquivo</span>
+    <input class="modal-pagamento-input-file" type="file" id="inputComprovante" accept="image/*,application/pdf">
+  </div>
 
-    <label>Comprovante:</label>
-    <input type="file" id="inputComprovante" accept="image/*,application/pdf">
+  <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoFatura(${cartaoId}, '${mesInput}')">
+    Confirmar Pagamento
+  </button>
+`;
 
-    <button onclick="confirmarPagamentoFatura(${cartaoId}, '${mesInput}')">
-      Confirmar Pagamento
-    </button>
-  `;
-
-  abrirModal("Pagamento de Fatura", html);
+  abrirModal("Fatura", html);
 }
 
 async function confirmarPagamentoFatura(cartaoId, mesInput) {
 
-  const inputFile = document.getElementById("inputComprovante");
-  const file = inputFile.files[0];
+    const inputFile = document.getElementById("inputComprovante");
+    const file = inputFile.files[0];
 
-  if (!file) {
-    alert("Selecione um comprovante.");
-    return;
-  }
+    if (!file) {
+      alert("Selecione um comprovante.");
+      return;
+    }
 
-  const base64 = await arquivoParaBase64(file);
+    const base64 = await arquivoParaBase64(file);
 
-  const [ano, mes] = mesInput.split("-").map(Number);
-  const cartao = await db.cartoes.get(cartaoId);
+    const [ano, mes] = mesInput.split("-").map(Number);
+    const cartao = await db.cartoes.get(cartaoId);
 
-  const diaFechamento = Number(cartao.fechamento);
-  const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
-  const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
+    const diaFechamento = Number(cartao.fechamento);
+    const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
+    const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-  const despesas = await db.despesas.where("cartaoId").equals(cartaoId).toArray();
+    const despesas = await db.despesas.where("cartaoId").equals(cartaoId).toArray();
 
-  const despesasCiclo = despesas.filter(d => {
-    if (d.formaPagamento !== "cartao") return false;
-    const data = new Date(d.data);
-    return data >= dataInicio && data <= dataFim;
-  });
+    const despesasCiclo = despesas.filter(d => {
+      if (d.formaPagamento !== "cartao") return false;
+      const data = new Date(d.data);
+      return data >= dataInicio && data <= dataFim;
+    });
 
-  const totalFatura = despesasCiclo.reduce(
-    (acc, d) => acc + Number(d.valor),
-    0
-  );
+    const totalFatura = despesasCiclo.reduce(
+      (acc, d) => acc + Number(d.valor),
+      0
+    );
 
-  // Impede pagar duas vezes
-  const jaPaga = await db.pagamentosFatura
-    .where({ cartaoId, ano, mes })
-    .first();
+    // Impede pagar duas vezes
+    const jaPaga = await db.pagamentosFatura
+      .where({ cartaoId, ano, mes })
+      .first();
 
-  if (jaPaga) {
-    alert("Essa fatura já foi paga.");
-    return;
-  }
+    if (jaPaga) {
+      alert("Essa fatura já foi paga.");
+      return;
+    }
 
-  const pagamentoId = await db.pagamentosFatura.add({
-    cartaoId,
-    ano,
-    mes,
-    valor: totalFatura,
-    dataPagamento: new Date()
-  });
+    const pagamentoId = await db.pagamentosFatura.add({
+      cartaoId,
+      ano,
+      mes,
+      valor: totalFatura,
+      dataPagamento: new Date()
+    });
 
-  await db.cartoes.update(cartaoId, {
-    limiteAtual: cartao.limiteAtual + totalFatura
-  });
+    await db.cartoes.update(cartaoId, {
+      limiteAtual: cartao.limiteAtual + totalFatura
+    });
 
-  await db.comprovantes.add({
-    tipo: "fatura",
-    referenciaId: pagamentoId,
-    arquivo: base64,
-    nomeArquivo: file.name,
-    dataUpload: new Date()
-  });
+    await db.comprovantes.add({
+      tipo: "fatura",
+      referenciaId: pagamentoId,
+      arquivo: base64,
+      nomeArquivo: file.name,
+      dataUpload: new Date()
+    });
 
-  fecharModal();
+    fecharModal();
 
-  await Promise.all([
-    carregarResumoCartoes(),
-    carregarContasPendentes(),
-    atualizarDashboard()
-  ]);
+    await Promise.all([
+      carregarResumoCartoes(),
+      carregarContasPendentes(),
+      atualizarDashboard()
+    ]);
 
-  alert("✅ Fatura paga com sucesso!");
+    alert("✅ Fatura paga com sucesso!");
 }
 
 async function abrirModalPagamentoPix(despesaId) {
-
   const despesa = await db.despesas.get(despesaId);
 
   const html = `
-    <h2>Pagar Pix</h2>
-    <p><strong>${despesa.descricao || "Sem descrição"}</strong></p>
-    <p>${formatarMoeda(Number(despesa.valor))}</p>
+  <h2 class="modal-pagamento-title">Conta De ${despesa.descricao || "Sem descrição"}</h2>
+  <p class="modal-pagamento-valor">Valor: ${formatarMoeda(Number(despesa.valor))}</p>
+<br>
+  <label class="modal-pagamento-label">Comprovante:</label>
+  <div class="modal-pagamento-file-wrapper">
+    <span class="modal-pagamento-btn-file">Escolher arquivo</span>
+    <input class="modal-pagamento-input-file" type="file" id="inputComprovante" accept="image/*,application/pdf">
+  </div>
 
-    <label>Comprovante:</label>
-    <input type="file" id="inputComprovante" accept="image/*,application/pdf">
+  <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoPix(${despesaId})">
+    Confirmar Pagamento
+  </button>
+`;
 
-    <button onclick="confirmarPagamentoPix(${despesaId})">
-      Confirmar Pagamento
-    </button>
-  `;
-
-  abrirModal("Pagamento Pix", html);
+  abrirModal(" Pix", html);
 }
 
 async function confirmarPagamentoPix(despesaId) {
 
-  const inputFile = document.getElementById("inputComprovante");
-  const file = inputFile.files[0];
+    const inputFile = document.getElementById("inputComprovante");
+    const file = inputFile.files[0];
 
-  if (!file) {
-    alert("Selecione um comprovante.");
-    return;
-  }
+    if (!file) {
+      alert("Selecione um comprovante.");
+      return;
+    }
 
-  const base64 = await arquivoParaBase64(file);
+    const base64 = await arquivoParaBase64(file);
 
-  await db.despesas.update(despesaId, {
-    pago: true
-  });
+    await db.despesas.update(despesaId, {
+      pago: true
+    });
 
-  await db.comprovantes.add({
-    tipo: "pix",
-    referenciaId: despesaId,
-    arquivo: base64,
-    nomeArquivo: file.name,
-    dataUpload: new Date()
-  });
+    await db.comprovantes.add({
+      tipo: "pix",
+      referenciaId: despesaId,
+      arquivo: base64,
+      nomeArquivo: file.name,
+      dataUpload: new Date()
+    });
 
-  fecharModal();
+    fecharModal();
 
-  await Promise.all([
-    carregarContasPendentes(),
-    atualizarDashboard()
-  ]);
+    await Promise.all([
+      carregarContasPendentes(),
+      atualizarDashboard()
+    ]);
 
-  alert("✅ Pix marcado como pago!");
+    alert("✅ Pix marcado como pago!");
 }
+
+document.addEventListener("click", e => {
+  if (e.target.classList.contains("modal-pagamento-btn-file")) {
+    const wrapper = e.target.parentElement;
+    const input = wrapper.querySelector(".modal-pagamento-input-file");
+    input.click();
+  }
+});
+
+
+
