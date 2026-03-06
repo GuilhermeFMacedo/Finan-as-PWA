@@ -2173,7 +2173,8 @@ input[type="file"]::file-selector-button {
   gap: 12px;
   overflow-x: auto; /* Permite o deslize */
   scroll-snap-type: x mandatory; /* Força a "trava" no card */
-  margin: 15px;
+  padding: 0 15px;
+  margin-top: 15px;
   -webkit-overflow-scrolling: touch; /* Suavidade no iOS */
   scrollbar-width: none; /* Esconde scroll no Firefox */
 }
@@ -2181,10 +2182,18 @@ input[type="file"]::file-selector-button {
 .pendentes-wrapper::-webkit-scrollbar {
   display: none; /* Esconde scroll no Chrome/Safari */
 }
+.pendentes-wrapper::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, #121212);
+}
 
 .pendente-item {
   /* Cálculo preciso: 33.33% menos a compensação dos espaços (gaps) */
-  flex: 0 0 calc((100% / 3) - 8px); 
+  flex: 0 0 30%; 
   
   scroll-snap-align: start; /* Onde o card "gruda" ao soltar o dedo */
   box-sizing: border-box; /* Essencial para o padding não quebrar a largura */
