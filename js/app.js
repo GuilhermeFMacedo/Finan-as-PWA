@@ -1,3 +1,6 @@
+// 1. Inicialização e Eventos Globais
+let confirmCallback = null;
+
 document.addEventListener("DOMContentLoaded", () => {
 
   const navItems = document.querySelectorAll(".nav-item");
@@ -45,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   inputMes.addEventListener("change", atualizarDashboard);
 });
 
+// 2. Gerenciamento de Navegação
 function trocarPagina(page) {
 
   document.querySelectorAll(".page")
@@ -60,6 +64,7 @@ function trocarPagina(page) {
   if (page === "historico") abrirHistorico();
 }
 
+// 3. Controle de Modais e Diálogos
 function abrirModal(titulo, conteudoHTML) {
   limparErro();
   document.getElementById("modalTitle").textContent = titulo;
@@ -74,6 +79,29 @@ function abrirModal(titulo, conteudoHTML) {
 function fecharModal() {
   document.getElementById("modalOverlay").classList.add("hidden");
   limparErro();
+}
+
+function confirmarAcao(mensagem, callback) {
+  const overlay = document.getElementById("confirmOverlay");
+  const msg = document.getElementById("confirmMensagem");
+  const btn = document.getElementById("confirmBtn");
+
+  msg.innerText = mensagem;
+  overlay.style.display = "flex";
+
+  confirmCallback = callback;
+
+  btn.onclick = () => {
+    if (confirmCallback) confirmCallback();
+    fecharConfirm();
+  };
+}
+
+function fecharConfirm() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  confirmCallback = null;
+  const input = document.getElementById("inputImportarBackup");
+  if (input) input.value = "";
 }
 
 function perguntarExcluir(titulo, mensagem) {
@@ -95,6 +123,7 @@ function perguntarExcluir(titulo, mensagem) {
   });
 }
 
+// 4. Feedback ao Usuário
 function mostrarErro(mensagem, id = "formErro", autoHide = true, tipo = "erro") {
   const erroDiv = document.getElementById(id);
   if (!erroDiv) return;
@@ -116,25 +145,3 @@ function limparErro(id = "formErro") {
   erroDiv.style.display = "none";
 }
 
-let confirmCallback = null;
-
-function confirmarAcao(mensagem, callback) {
-  const overlay = document.getElementById("confirmOverlay");
-  const msg = document.getElementById("confirmMensagem");
-  const btn = document.getElementById("confirmBtn");
-
-  msg.innerText = mensagem;
-  overlay.style.display = "flex";
-
-  confirmCallback = callback;
-
-  btn.onclick = () => {
-    if (confirmCallback) confirmCallback();
-    fecharConfirm();
-  };
-}
-
-function fecharConfirm() {
-  document.getElementById("confirmOverlay").style.display = "none";
-  confirmCallback = null;
-}

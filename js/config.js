@@ -1,5 +1,55 @@
 /////////////////////////////////////////
 
+// 1. CONSTANTES E CONFIGURAÇÕES
+const gruposIcones = {
+
+  "Transporte": [
+    "motorcycle","directions_car","local_gas_station","tire_repair",
+    "directions_bus","train","taxi_alert"
+  ],
+
+  "Casa": [
+    "home","lightbulb","water_drop","wifi","router","faucet","bolt","key"
+  ],
+
+  "Alimentação": [
+    "shopping_cart","local_grocery_store","restaurant","lunch_dining",
+    "local_pizza","bakery_dining","coffee","local_bar"
+  ],
+
+  "Família": [
+    "child_care","baby_changing_station","toys","family_restroom","school"
+  ],
+
+  "Saúde": [
+    "medical_services","pill","vaccines","fitness_center","spa",
+  ],
+
+  "Lazer": [
+    "sports_esports","movie","theater_comedy","camera_alt","headset","tv"
+  ],
+
+  "Tecnologia": [
+    "smartphone","laptop_mac"
+  ],
+
+  "Pessoal": [
+    "styler","checkroom","shopping_bag","watch","content_cut"
+  ],
+
+  "Financeiro": [
+    "payments","credit_card","account_balance","savings",
+    "receipt_long","trending_up","contract"
+  ],
+
+  "Extras": [
+    "pets","flight","luggage","store","subscriptions","menu_book","business_center"
+  ]
+
+};
+let iconeSelecionado = "motorcycle";
+
+// 2. FLUXO DE TELAS (CONFIGURAÇÃO)
 async function abrirCartoes() {
 
   const container = document.getElementById("config-content");
@@ -43,8 +93,96 @@ async function abrirPessoas() {
   listarPessoas();
 }
 
-/////////////////////////////////////////
+async function abrirHistorico() {
+  // 1. Seleciona a seção correta (conforme o ID que corrigimos no HTML)
+  const container = document.getElementById("page-historico");
 
+  if (!container) {
+    console.error("Erro: A seção 'page-historico' não existe no HTML.");
+    return;
+  }
+
+
+  // 3. Seleciona onde a lista de transações vai de fato entrar
+  const lista = document.getElementById("lista-historico");
+
+  try {
+    // Busca os dados no banco (Dexie/IndexedDB)
+    const [despesas, pagamentosFatura, cartoes, comprovantes] = await Promise.all([
+      db.despesas.toArray(),
+      db.pagamentosFatura.toArray(),
+      db.cartoes.toArray(),
+      db.comprovantes.toArray()
+    ]);
+
+    const cartMap = new Map(cartoes.map(c => [c.id, c]));
+    
+    // Funções auxiliares de formatação
+    const escape = str => str ? str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'": '&#39;' }[m])) : '';
+    const fMoeda = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const fData = d => {
+      const data = new Date(d);
+      return `${data.getDate().toString().padStart(2,'0')}/${(data.getMonth()+1).toString().padStart(2,'0')}/${data.getFullYear()}`;
+    };
+
+    let htmlBuffer = "";
+
+    // --- SEÇÃO: PIX PAGOS ---
+    const pixPagos = despesas.filter(d => d.formaPagamento === "pix" && d.pago);
+    if (pixPagos.length > 0) {
+      htmlBuffer += `<h4 class="config-grupo">PIX Pagos</h4>`;
+      pixPagos.forEach(d => {
+        const comprovante = comprovantes.find(c => c.tipo === "pix" && c.referenciaId === d.id);
+        htmlBuffer += `
+          <div class="item-config" style="border-left: 4px solid #6366f1">
+            <div class="info-primaria">
+              <strong>${escape(d.descricao || "PIX")}</strong>
+            </div>
+            <div class="info-detalhes">
+              <small>Valor: <strong>${fMoeda(d.valor)}</strong></small>
+              <small>Data: ${fData(d.data)}</small>
+            </div>
+            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    // --- SEÇÃO: FATURAS PAGAS ---
+    if (pagamentosFatura.length > 0) {
+      htmlBuffer += `<h4 class="config-grupo">Faturas de Cartão</h4>`;
+      pagamentosFatura.forEach(p => {
+        const cartao = cartMap.get(p.cartaoId);
+        const comprovante = comprovantes.find(c => c.tipo === "fatura" && c.referenciaId === p.id);
+        htmlBuffer += `
+          <div class="item-config" style="border-left: 4px solid ${cartao?.cor || '#ccc'}">
+            <div class="info-primaria">
+              <strong>Fatura: ${escape(cartao?.nome || 'Cartão')}</strong>
+            </div>
+            <div class="info-detalhes">
+              <small>Valor: <strong>${fMoeda(p.valor)}</strong></small>
+              <small>Pago em: ${fData(p.dataPagamento)}</small>
+            </div>
+            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    // Se não houver nada em nenhuma categoria
+    if (!pixPagos.length && !pagamentosFatura.length) {
+      htmlBuffer = `<p class="vazio">🤷‍♂️ Nenhum pagamento registrado no histórico.</p>`;
+    }
+
+    lista.innerHTML = htmlBuffer;
+
+  } catch (erro) {
+    console.error("Erro ao carregar histórico:", erro);
+    lista.innerHTML = '<p class="erro">Falha ao acessar o banco de dados.</p>';
+  }
+}
+
+// 3. Criação de Dados
 function adicionarCartao() {
   abrirModal("Novo Cartão", `
     <form id="formCartao" class="modal-form">
@@ -150,6 +288,14 @@ function adicionarCategoria() {
   }, 50);
 }
 
+function adicionarSubcategoria(categoriaId) {
+
+  abrirModal("Nova Subcategoria", `
+    <input id="subNome" placeholder="Nome da subcategoria">
+    <button class="save-btn" onclick="salvarSubcategoria(${categoriaId})">Salvar</button>
+  `);
+}
+
 function adicionarPessoa() {
 
   abrirModal("Nova Pessoa", `
@@ -158,8 +304,8 @@ function adicionarPessoa() {
   `);
 }
 
-/////////////////////////////////////////
-
+// 4. Persistência de Dados
+// Salvar
 async function salvarCartao() {
   const btn = document.getElementById("btnSalvarCartao");
 
@@ -247,6 +393,20 @@ async function salvarCategoria() {
   }
 }
 
+async function salvarSubcategoria(categoriaId) {
+
+  const nome = document.getElementById("subNome").value;
+  if (!nome) return;
+
+  await db.subcategorias.add({
+    nome,
+    categoriaId
+  });
+
+  fecharModal();
+  listarCategorias();
+}
+
 async function salvarPessoa() {
 
   const nome = document.getElementById("pessoaNome").value;
@@ -258,8 +418,7 @@ async function salvarPessoa() {
   listarPessoas();
 }
 
-/////////////////////////////////////////
-
+// Excluir
 async function excluirCartao(id) {
   await db.cartoes.delete(id);
   listarCartoes();
@@ -281,8 +440,7 @@ async function excluirPessoa(id) {
   listarPessoas();
 }
 
-/////////////////////////////////////////
-
+// 5. Listagem e Renderização
 async function listarCartoes() {
   const lista = document.getElementById("lista-cartoes");
 
@@ -416,14 +574,12 @@ async function listarPessoas() {
   }
 }
 
-/////////////////////////////////////////
-
-/* ================= CATEGORIAS ================= */
-
-
-let iconeSelecionado = "motorcycle";
-
-
+// 6. Lógica de Ícones e Comprovantes
+// Ícones
+function fecharModalIcones() {
+  document.getElementById("modalIconesOverlay")
+    .classList.add("hidden");
+}
 
 function selecionarIconePrincipal(elemento) {
 
@@ -438,19 +594,31 @@ function selecionarIconePrincipal(elemento) {
   atualizarCorIcone();
 }
 
-function selecionarIcone(elemento) {
-  document.querySelectorAll(".icone-principal, .icone-item")
-    .forEach(el => el.classList.remove("selecionado"));
+function selecionarIconeDoModal(icone) {
 
-  elemento.classList.add("selecionado");
+  iconeSelecionado = icone;
 
-  document.getElementById("iconeCategoria").value =
-    elemento.getAttribute("data-icone");
+  const iconePrincipal = document.getElementById("iconePrincipal1");
+
+  iconePrincipal.setAttribute("data-icone", icone);
+  iconePrincipal.innerHTML =
+    `<span class="material-symbols-outlined">${icone}</span>`;
+
+  document.getElementById("iconeCategoria").value = icone;
+
+  atualizarCorIcone();
+
+  fecharModalIcones();
 }
 
-function toggleGradeIcones() {
-  document.getElementById("gradeIcones")
-    .classList.toggle("hidden");
+function abrirModalIcones() {
+
+  const container = document.getElementById("listaIconesModal");
+
+  container.innerHTML = gerarListaIconesModal();
+
+  document.getElementById("modalIconesOverlay")
+    .classList.remove("hidden");
 }
 
 function gerarListaIconesModal() {
@@ -482,66 +650,6 @@ function gerarListaIconesModal() {
   return html;
 }
 
-function selecionarIconeDoModal(icone) {
-
-  iconeSelecionado = icone;
-
-  const iconePrincipal = document.getElementById("iconePrincipal1");
-
-  iconePrincipal.setAttribute("data-icone", icone);
-  iconePrincipal.innerHTML =
-    `<span class="material-symbols-outlined">${icone}</span>`;
-
-  document.getElementById("iconeCategoria").value = icone;
-
-  atualizarCorIcone();
-
-  fecharModalIcones();
-}
-
-function abrirModalIcones() {
-
-  const container = document.getElementById("listaIconesModal");
-
-  container.innerHTML = gerarListaIconesModal();
-
-  document.getElementById("modalIconesOverlay")
-    .classList.remove("hidden");
-}
-
-function fecharModalIcones() {
-  document.getElementById("modalIconesOverlay")
-    .classList.add("hidden");
-}
-
-
-
-function adicionarSubcategoria(categoriaId) {
-
-  abrirModal("Nova Subcategoria", `
-    <input id="subNome" placeholder="Nome da subcategoria">
-    <button class="save-btn" onclick="salvarSubcategoria(${categoriaId})">Salvar</button>
-  `);
-}
-
-async function salvarSubcategoria(categoriaId) {
-
-  const nome = document.getElementById("subNome").value;
-  if (!nome) return;
-
-  await db.subcategorias.add({
-    nome,
-    categoriaId
-  });
-
-  fecharModal();
-  listarCategorias();
-}
-
-
-
-
-
 window.atualizarCorIcone = function () {
 
   const corInput = document.getElementById("corCategoria");
@@ -559,69 +667,88 @@ window.atualizarCorIcone = function () {
     });
 };
 
-const gruposIcones = {
+function selecionarIcone(elemento) {
+  document.querySelectorAll(".icone-principal, .icone-item")
+    .forEach(el => el.classList.remove("selecionado"));
 
-  "Transporte": [
-    "motorcycle","directions_car","local_gas_station","tire_repair",
-    "directions_bus","train","taxi_alert"
-  ],
+  elemento.classList.add("selecionado");
 
-  "Casa": [
-    "home","lightbulb","water_drop","wifi","router","faucet","bolt","key"
-  ],
+  document.getElementById("iconeCategoria").value =
+    elemento.getAttribute("data-icone");
+}
 
-  "Alimentação": [
-    "shopping_cart","local_grocery_store","restaurant","lunch_dining",
-    "local_pizza","bakery_dining","coffee","local_bar"
-  ],
+function toggleGradeIcones() {
+  document.getElementById("gradeIcones")
+    .classList.toggle("hidden");
+}
 
-  "Família": [
-    "child_care","baby_changing_station","toys","family_restroom","school"
-  ],
+// Histórico/Comprovantes
+async function verComprovante(comprovanteId) {
+  const comprovante = await db.comprovantes.get(Number(comprovanteId));
+  
+  if (!comprovante) {
+    alert("Comprovante não encontrado.");
+    return;
+  }
 
-  "Saúde": [
-    "medical_services","pill","vaccines","fitness_center","spa",
-  ],
+  const arquivo = comprovante.arquivo;
+  const isImage = arquivo.startsWith("data:image");
 
-  "Lazer": [
-    "sports_esports","movie","theater_comedy","camera_alt","headset","tv"
-  ],
+  // No celular, botões grandes e fáceis de tocar (Touch Friendly)
+  let botoes = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+      <a href="${arquivo}" download="comprovante.png" 
+         style="text-decoration:none; background:#22c55e; color:white; padding:12px; border-radius:8px; text-align:center; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
+         📥 Salvar
+      </a>
+      
+      <button onclick="compartilharComprovante('${arquivo}')" 
+         style="background:#6366f1; color:white; padding:12px; border-radius:8px; border:none; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
+         📤 Enviar
+      </button>
+    </div>
+  `;
 
-  "Tecnologia": [
-    "smartphone","laptop_mac"
-  ],
+  let exibicao = "";
+  if (isImage) {
+    exibicao = `
+      <div style="width:100%; overflow:hidden; border-radius:8px; background:#f0f0f0;">
+        <img src="${arquivo}" 
+             style="width:100%; display:block; height:auto; pointer-events: auto;"
+             id="imgComprovante">
+      </div>
+      <p style="font-size:12px; color:#666; text-align:center; margin-top:8px;">
+        💡 Dica: Você pode usar o gesto de pinça para dar zoom.
+      </p>
+    `;
+  } else {
+    exibicao = `<iframe src="${arquivo}" width="100%" height="400px" style="border:none; border-radius:8px;"></iframe>`;
+  }
 
-  "Pessoal": [
-    "styler","checkroom","shopping_bag","watch","content_cut"
-  ],
+  abrirModal("Comprovante", botoes + exibicao);
+}
 
-  "Financeiro": [
-    "payments","credit_card","account_balance","savings",
-    "receipt_long","trending_up","contract"
-  ],
+async function compartilharComprovante(base64Data) {
+  try {
+    const res = await fetch(base64Data);
+    const blob = await res.blob();
+    const file = new File([blob], "comprovante.png", { type: blob.type });
 
-  "Extras": [
-    "pets","flight","luggage","store","subscriptions","menu_book","business_center"
-  ]
+    if (navigator.share) {
+      await navigator.share({
+        files: [file],
+        title: 'Comprovante',
+        text: 'Segue comprovante de pagamento.',
+      });
+    } else {
+      alert("Seu navegador não suporta compartilhamento direto. Use o botão Salvar.");
+    }
+  } catch (err) {
+    console.error("Erro ao compartilhar:", err);
+  }
+}
 
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-/////////////////////////////////////////
-
-// importar e exportar o db
-
+// 7. Importação e Exportação
 async function exportarDados() {
   try {
 
@@ -672,8 +799,6 @@ async function exportarDados() {
     );
   }
 }
-
-// ⚠️ Essa versão APAGA o banco atual antes de importar.
 
 async function importarDados(file) {
   try {
@@ -738,165 +863,5 @@ async function importarDados(file) {
       false,
       "erro"
     );
-  }
-}
-
-
-/////////////////////////////////////////
-
-
-// nao inserido ainda
-async function abrirHistorico() {
-  // 1. Seleciona a seção correta (conforme o ID que corrigimos no HTML)
-  const container = document.getElementById("page-historico");
-
-  if (!container) {
-    console.error("Erro: A seção 'page-historico' não existe no HTML.");
-    return;
-  }
-
-
-  // 3. Seleciona onde a lista de transações vai de fato entrar
-  const lista = document.getElementById("lista-historico");
-
-  try {
-    // Busca os dados no banco (Dexie/IndexedDB)
-    const [despesas, pagamentosFatura, cartoes, comprovantes] = await Promise.all([
-      db.despesas.toArray(),
-      db.pagamentosFatura.toArray(),
-      db.cartoes.toArray(),
-      db.comprovantes.toArray()
-    ]);
-
-    const cartMap = new Map(cartoes.map(c => [c.id, c]));
-    
-    // Funções auxiliares de formatação
-    const escape = str => str ? str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'": '&#39;' }[m])) : '';
-    const fMoeda = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const fData = d => {
-      const data = new Date(d);
-      return `${data.getDate().toString().padStart(2,'0')}/${(data.getMonth()+1).toString().padStart(2,'0')}/${data.getFullYear()}`;
-    };
-
-    let htmlBuffer = "";
-
-    // --- SEÇÃO: PIX PAGOS ---
-    const pixPagos = despesas.filter(d => d.formaPagamento === "pix" && d.pago);
-    if (pixPagos.length > 0) {
-      htmlBuffer += `<h4 class="config-grupo">PIX Pagos</h4>`;
-      pixPagos.forEach(d => {
-        const comprovante = comprovantes.find(c => c.tipo === "pix" && c.referenciaId === d.id);
-        htmlBuffer += `
-          <div class="item-config" style="border-left: 4px solid #6366f1">
-            <div class="info-primaria">
-              <strong>${escape(d.descricao || "PIX")}</strong>
-            </div>
-            <div class="info-detalhes">
-              <small>Valor: <strong>${fMoeda(d.valor)}</strong></small>
-              <small>Data: ${fData(d.data)}</small>
-            </div>
-            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
-          </div>
-        `;
-      });
-    }
-
-    // --- SEÇÃO: FATURAS PAGAS ---
-    if (pagamentosFatura.length > 0) {
-      htmlBuffer += `<h4 class="config-grupo">Faturas de Cartão</h4>`;
-      pagamentosFatura.forEach(p => {
-        const cartao = cartMap.get(p.cartaoId);
-        const comprovante = comprovantes.find(c => c.tipo === "fatura" && c.referenciaId === p.id);
-        htmlBuffer += `
-          <div class="item-config" style="border-left: 4px solid ${cartao?.cor || '#ccc'}">
-            <div class="info-primaria">
-              <strong>Fatura: ${escape(cartao?.nome || 'Cartão')}</strong>
-            </div>
-            <div class="info-detalhes">
-              <small>Valor: <strong>${fMoeda(p.valor)}</strong></small>
-              <small>Pago em: ${fData(p.dataPagamento)}</small>
-            </div>
-            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
-          </div>
-        `;
-      });
-    }
-
-    // Se não houver nada em nenhuma categoria
-    if (!pixPagos.length && !pagamentosFatura.length) {
-      htmlBuffer = `<p class="vazio">🤷‍♂️ Nenhum pagamento registrado no histórico.</p>`;
-    }
-
-    lista.innerHTML = htmlBuffer;
-
-  } catch (erro) {
-    console.error("Erro ao carregar histórico:", erro);
-    lista.innerHTML = '<p class="erro">Falha ao acessar o banco de dados.</p>';
-  }
-}
-
-async function verComprovante(comprovanteId) {
-  const comprovante = await db.comprovantes.get(Number(comprovanteId));
-  
-  if (!comprovante) {
-    alert("Comprovante não encontrado.");
-    return;
-  }
-
-  const arquivo = comprovante.arquivo;
-  const isImage = arquivo.startsWith("data:image");
-
-  // No celular, botões grandes e fáceis de tocar (Touch Friendly)
-  let botoes = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-      <a href="${arquivo}" download="comprovante.png" 
-         style="text-decoration:none; background:#22c55e; color:white; padding:12px; border-radius:8px; text-align:center; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
-         📥 Salvar
-      </a>
-      
-      <button onclick="compartilharComprovante('${arquivo}')" 
-         style="background:#6366f1; color:white; padding:12px; border-radius:8px; border:none; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
-         📤 Enviar
-      </button>
-    </div>
-  `;
-
-  let exibicao = "";
-  if (isImage) {
-    exibicao = `
-      <div style="width:100%; overflow:hidden; border-radius:8px; background:#f0f0f0;">
-        <img src="${arquivo}" 
-             style="width:100%; display:block; height:auto; pointer-events: auto;"
-             id="imgComprovante">
-      </div>
-      <p style="font-size:12px; color:#666; text-align:center; margin-top:8px;">
-        💡 Dica: Você pode usar o gesto de pinça para dar zoom.
-      </p>
-    `;
-  } else {
-    exibicao = `<iframe src="${arquivo}" width="100%" height="400px" style="border:none; border-radius:8px;"></iframe>`;
-  }
-
-  abrirModal("Comprovante", botoes + exibicao);
-}
-
-// Função extra para usar o menu de compartilhamento nativo do Celular (WhatsApp, etc)
-async function compartilharComprovante(base64Data) {
-  try {
-    const res = await fetch(base64Data);
-    const blob = await res.blob();
-    const file = new File([blob], "comprovante.png", { type: blob.type });
-
-    if (navigator.share) {
-      await navigator.share({
-        files: [file],
-        title: 'Comprovante',
-        text: 'Segue comprovante de pagamento.',
-      });
-    } else {
-      alert("Seu navegador não suporta compartilhamento direto. Use o botão Salvar.");
-    }
-  } catch (err) {
-    console.error("Erro ao compartilhar:", err);
   }
 }

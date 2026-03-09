@@ -140,7 +140,7 @@ function configurarFiltros() {
 }
 
 async function listarTransacoes() {
-  configurarFiltros(); // Garante que os selects existam
+  configurarFiltros(); 
 
   const lista = document.getElementById("lista-transacoes");
   const selMes = document.getElementById("selMes");
@@ -148,6 +148,7 @@ async function listarTransacoes() {
   
   if (!lista || !selMes || !selAno) return;
 
+  // No seu HTML, se o Janeiro for value="0", mantemos o parseInt
   const mesFiltro = parseInt(selMes.value); // 0-11
   const anoFiltro = parseInt(selAno.value);
 
@@ -161,43 +162,38 @@ async function listarTransacoes() {
       db.cartoes.toArray()
     ]);
 
-    const catMap = new Map(cats.map(c => [c.id, c.nome]));
     const subMap = new Map(subcats.map(s => [s.id, s.nome]));
     const pessMap = new Map(pess.map(p => [p.id, p.nome]));
-    const cartMap = new Map(carts.map(c => [c.id, c.nome]));
 
-    // --- Normaliza e filtra
+    // --- Normaliza e filtra usando SPLIT para evitar Fuso Horário ---
     const todas = [
       ...receitas.map(r => ({ ...r, tipo: "receita" })),
       ...despesas.map(d => ({ ...d, tipo: "despesa" }))
     ].filter(t => {
-      // Converte para Date local
-      const d = new Date(t.data);
-      const m = d.getMonth();       // 0-11
-      const a = d.getFullYear();
+      // t.data é "2026-03-01"
+      const [anoD, mesD] = t.data.split("-").map(Number);
+      
+      // mesD vem do banco como 1-12, mesFiltro geralmente é 0-11
+      // Ajustamos a comparação:
+      return (mesD - 1) === mesFiltro && anoD === anoFiltro;
+    }).sort((a, b) => b.data.localeCompare(a.data)); // Ordenação de string funciona bem para YYYY-MM-DD
 
-      return m === mesFiltro && a === anoFiltro;
-    }).sort((a, b) => new Date(b.data) - new Date(a.data));
-
-    // --- Renderiza ---
     if (todas.length === 0) {
       lista.innerHTML = `<p class="lista-vazia">Nenhum dado para ${selMes.options[selMes.selectedIndex].text}/${anoFiltro}</p>`;
       return;
     }
 
-    // Função para formatar a data corretamente DD/MM/YYYY
+    // --- Função de Formatação Corrigida ---
     function formatarDataLocal(dataInput) {
-      const d = new Date(dataInput);
-      const dia = d.getDate().toString().padStart(2, "0");
-      const mes = (d.getMonth() + 1).toString().padStart(2, "0"); // +1 pq getMonth() é 0-11
-      const ano = d.getFullYear();
+      // dataInput: "2026-03-01"
+      const [ano, mes, dia] = dataInput.split("-");
       return `${dia}/${mes}/${ano}`;
     }
 
     lista.innerHTML = todas.map(t => {
       const isDespesa = t.tipo === "despesa";
-
       const dataFormatada = formatarDataLocal(t.data);
+      
       const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
         style: 'currency',
         currency: 'BRL'
@@ -212,6 +208,9 @@ async function listarTransacoes() {
 
       const corDestaque = isDespesa ? (categoria.cor || '#f87171') : '#22c55e';
       const corBadgeCard = (isDespesa && cartaoObj) ? cartaoObj.cor : 'transparent';
+
+      // Lógica do Badge do Pix (agora checando 0 ou 1)
+      const isPixPago = Number(t.pago) === 1;
 
       return `
         <div class="card-extrato ${t.tipo}" style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeCard}">
@@ -251,9 +250,9 @@ async function listarTransacoes() {
 
               <div class="extrato-badges">
                 ${isDespesa ? `
-                  ${t.formaPagamento === 'pix'
-                    ? `<span class="badge-pix ${t.pago ? 'pago' : 'pendente'}">
-                        ${t.pago ? 'Pix Pago' : 'Pix Pendente'}
+                  ${t.formaPagamento === 'pix' || t.formaPagamento === 'financiamento'
+                    ? `<span class="badge-pix ${isPixPago ? 'pago' : 'pendente'}">
+                        ${isPixPago ? 'Pix Pago' : 'Pix Pendente'}
                       </span>` : ''}
                   ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
                 ` : `<span class="badge-receita">Depósito</span>`}
@@ -274,39 +273,57 @@ async function listarTransacoes() {
 }
 
 async function excluirTransacao(id, tipo) {
-  const confirmou = await perguntarExcluir("Excluir Registro", "Deseja realmente apagar esta transação?");
+  const confirmou = await perguntarExcluir("Excluir Registro", "Esta transação faz parte de um grupo. Deseja excluir todas as parcelas vinculadas?");
   if (!confirmou) return;
 
   try {
     if (tipo === "receita") {
       await db.receitas.delete(id);
     } else {
-      // 1. Buscar os dados da despesa antes de excluir
       const despesa = await db.despesas.get(id);
+      if (!despesa) return;
 
-      if (despesa) {
-        // 2. Verificar se foi no cartão e se tem um cartaoId válido
+      // 1. Identificar se faz parte de um grupo (Parcelado ou Financiamento)
+      if (despesa.grupoParcelas) {
+        // Busca todas as parcelas desse mesmo grupo
+        const todasDoGrupo = await db.despesas
+          .where("grupoParcelas")
+          .equals(despesa.grupoParcelas)
+          .toArray();
+
+        // 2. Se for Cartão, precisamos devolver o valor TOTAL do grupo ao limite
         if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
+          const valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
           const cartao = await db.cartoes.get(despesa.cartaoId);
           
           if (cartao) {
-            // 3. Devolver o valor ao limite atual do cartão
-            const novoLimite = cartao.limiteAtual + despesa.valor;
-            
             await db.cartoes.update(despesa.cartaoId, { 
-              limiteAtual: novoLimite 
+              limiteAtual: cartao.limiteAtual + valorTotalEstorno 
             });
-            
-            console.log(`✅ R$ ${despesa.valor} estornado para o cartão ${cartao.nome}`);
+            console.log(`✅ Estorno Total de ${formatarMoeda(valorTotalEstorno)} realizado.`);
           }
         }
-        
-        // 4. Excluir o registro da despesa
+
+        // 3. Excluir todas as parcelas do grupo de uma vez
+        const idsParaExcluir = todasDoGrupo.map(d => d.id);
+        await db.despesas.bulkDelete(idsParaExcluir);
+        console.log(`🗑️ ${idsParaExcluir.length} parcelas excluídas.`);
+
+      } else {
+        // --- Caso seja uma despesa única (sem grupo) ---
+        if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
+          const cartao = await db.cartoes.get(despesa.cartaoId);
+          if (cartao) {
+            await db.cartoes.update(despesa.cartaoId, { 
+              limiteAtual: cartao.limiteAtual + Number(despesa.valor) 
+            });
+          }
+        }
         await db.despesas.delete(id);
       }
     }
 
-    // 5. Atualizar a interface
+    // 4. Atualizar a interface
     await Promise.all([
       atualizarDashboard(),
       listarTransacoes(),
@@ -399,10 +416,11 @@ window.toggleParcelado = function() {
 function abrirModalDespesa() {
   const hoje = new Date().toISOString().split("T")[0];
 
-  // 1. Injeta o HTML (Estrutura limpa, sem eventos onchange no HTML)
+  // 1. Injeta o HTML (Corrigido aspas no style do pixOpcoesAdicionais)
   abrirModal("Nova Despesa", `
     <form id="formDespesa">
-      <div id="formErro" class="form-erro" style="display:none;"></div>
+      <div id="formErro" class="form-erro" style="display:none; color: red; margin-bottom: 10px;"></div>
+      
       <div class="form-group">
         <label>Data</label>
         <input type="date" id="despesaData" value="${hoje}" required>
@@ -419,9 +437,9 @@ function abrirModalDespesa() {
       </div>
 
       <div class="form-group">
-      <label>Categoria</label>
+        <label>Categoria</label>
         <select id="categoria" required>
-          <option value="categoria" disabled selected hidden></option>
+          <option value="" disabled selected hidden>Selecione...</option>
         </select>
       </div>
 
@@ -439,14 +457,29 @@ function abrirModalDespesa() {
         </select>
       </div>
 
+      <hr>
+
       <div class="switch-group">
         <label>Pagar com Pix?</label>
         <input type="checkbox" id="togglePix">
       </div>
-      <div id="pixExtra" style="display:none;">
+
+      <div id="pixOpcoesAdicionais" style="display:none; border-left: 3px solid #007bff; padding-left: 15px; margin: 10px 0;">
+        <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">Tipo de Pix:</p>
+        
         <div class="switch-group">
           <label>Já está pago?</label>
-          <input type="checkbox" id="despesaPago">
+          <input type="checkbox" id="checkPagoPix">
+        </div>
+
+        <div class="switch-group">
+          <label>É Financiamento?</label>
+          <input type="checkbox" id="checkFinanciamento">
+        </div>
+
+        <div id="campoMesesFinanciamento" style="display:none;" class="form-group">
+          <label>Duração (Meses)</label>
+          <input type="number" id="qtdMesesFinanciamento" min="2" placeholder="Ex: 48">
         </div>
       </div>
 
@@ -455,7 +488,7 @@ function abrirModalDespesa() {
         <input type="checkbox" id="toggleCartao">
       </div>
       
-      <div id="cartaoExtra" style="display:none;">
+      <div id="cartaoExtra" style="display:none; border-left: 3px solid #ffc107; padding-left: 15px; margin: 10px 0;">
         <div class="form-group">
           <label>Qual Cartão?</label>
           <select id="cartao">
@@ -471,7 +504,7 @@ function abrirModalDespesa() {
         <div id="parcelasExtra" style="display:none;">
           <div class="form-group">
             <label>Quantas Parcelas?</label>
-            <input type="number" id="despesaParcelas" min="1" value="1" placeholder="Ex: 12">
+            <input type="number" id="despesaParcelas" min="1" value="1">
           </div>
         </div>
       </div>
@@ -480,21 +513,41 @@ function abrirModalDespesa() {
     </form>
   `);
 
-  // 2. Carregar dados nos selects (Assíncrono)
+  // 2. Carregar dados (Assíncrono)
   carregarCategorias();
   carregarPessoas();
   carregarCartoes();
 
-  // 3. Selecionar Elementos para os Eventos
+  // 3. Selecionar Elementos
   const form = document.getElementById("formDespesa");
   const selCategoria = document.getElementById("categoria");
   const checkPix = document.getElementById("togglePix");
   const checkCartao = document.getElementById("toggleCartao");
-  const checkParcelado = document.getElementById("toggleParcelado");
+  const pixOpcoes = document.getElementById("pixOpcoesAdicionais");
+  const cartaoExtra = document.getElementById("cartaoExtra");
+  
+  const checkPago = document.getElementById("checkPagoPix");
+  const checkFinan = document.getElementById("checkFinanciamento");
+  const campoMeses = document.getElementById("campoMesesFinanciamento");
 
-  // --- ATRIBUIR EVENTOS VIA JAVASCRIPT (ADEUS ERRO DE "NOT A FUNCTION") ---
+  // --- LOGICA DOS CHECKBOXES PIX ---
 
-  // Lógica de Categoria -> Subcategoria
+  checkPago.addEventListener("change", function() {
+    if (this.checked) {
+      checkFinan.checked = false;
+      campoMeses.style.display = "none";
+    }
+  });
+
+  checkFinan.addEventListener("change", function() {
+    campoMeses.style.display = this.checked ? "block" : "none";
+    if (this.checked) {
+      checkPago.checked = false;
+    }
+  });
+
+  // --- LOGICA DE INTERAÇÃO GERAL ---
+
   selCategoria.addEventListener("change", async function() {
     const grupoSub = document.getElementById("grupoSubcategoria");
     if (this.value) {
@@ -503,34 +556,28 @@ function abrirModalDespesa() {
     }
   });
 
-  // Lógica de Alternância Pix
   checkPix.addEventListener("change", function() {
-    document.getElementById("pixExtra").style.display = this.checked ? "block" : "none";
+    pixOpcoes.style.display = this.checked ? "block" : "none";
     if (this.checked) {
       checkCartao.checked = false;
-      document.getElementById("cartaoExtra").style.display = "none";
+      cartaoExtra.style.display = "none";
     }
   });
 
-  // Lógica de Alternância Cartão
   checkCartao.addEventListener("change", function() {
-    document.getElementById("cartaoExtra").style.display = this.checked ? "block" : "none";
+    cartaoExtra.style.display = this.checked ? "block" : "none";
     if (this.checked) {
       checkPix.checked = false;
-      document.getElementById("pixExtra").style.display = "none";
+      pixOpcoes.style.display = "none";
     }
   });
 
-  // Lógica de Parcelamento
-  checkParcelado.addEventListener("change", function() {
+  document.getElementById("toggleParcelado").addEventListener("change", function() {
     document.getElementById("parcelasExtra").style.display = this.checked ? "block" : "none";
   });
 
-  // Lógica de Envio do Formulário
   form.addEventListener("submit", async function(e) {
-    e.preventDefault(); // Impede o recarregamento da página
-    
-    // Desabilitar botão para evitar cliques duplos
+    e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;
     btn.innerText = "Salvando...";
@@ -538,116 +585,214 @@ function abrirModalDespesa() {
     const sucesso = await salvarDespesa();
     
     if (!sucesso) {
-        btn.disabled = false;
-        btn.innerText = "Salvar Despesa";
+      btn.disabled = false;
+      btn.innerText = "Salvar Despesa";
     }
   });
 }
 
+// O coletor (pega os dados do formulario que é igual para todos).
+function obterValoresCamposComuns() {
+  return {
+    valor: parseFloat(document.getElementById("despesaValor").value) || 0,
+    data: document.getElementById("despesaData").value,
+    descricao: document.getElementById("despesaDescricao").value,
+    categoriaId: parseInt(document.getElementById("categoria").value),
+    subcategoriaId: parseInt(document.getElementById("subcategoria").value) || null,
+    pessoaId: parseInt(document.getElementById("pessoa").value),
+  };
+}
+//A função principal (o Maestro).
 async function salvarDespesa() {
   try {
-    limparErro();
-    // 1. Coleta de dados (igual antes)
-    const dataStr = document.getElementById("despesaData").value;
-    const valorTotal = parseFloat(document.getElementById("despesaValor").value);
-    const descricao = document.getElementById("despesaDescricao").value;
-    const categoriaId = parseInt(document.getElementById("categoria").value);
-    const subcategoriaId = parseInt(document.getElementById("subcategoria")?.value) || null;
-    const pessoaId = parseInt(document.getElementById("pessoa").value);
+    // 1. Coleta (Pega os dados brutos)
+    const dadosBase = obterValoresCamposComuns();
 
-    const isPix = document.getElementById("togglePix").checked;
-    const isCartao = document.getElementById("toggleCartao").checked;
+    // 2. Validação (Analisa os dados brutos + regras de método)
+    validarMetodoPagamento(dadosBase);
 
-    if (!isPix && !isCartao) {
-      mostrarErro("Selecione um método de pagamento (Pix ou Cartão).");
-      return false;
+    // 3. Identifica qual subtipo de função chamar
+    let resultado;
+    if (document.getElementById("toggleCartao").checked) {
+      resultado = await processarDespesaCartao(dadosBase);
+    } else {
+      resultado = await processarSalvamentoPix(dadosBase);
     }
 
-    let formaPagamento = isPix ? "pix" : "cartao";
-    let pago = isPix ? document.getElementById("despesaPago").checked : false;
-    let cartaoId = isCartao ? parseInt(document.getElementById("cartao").value) : null;
-    let parcelas = (isCartao && document.getElementById("toggleParcelado").checked) 
-                   ? (parseInt(document.getElementById("despesaParcelas").value) || 1) 
-                   : 1;
-
-    if (!dataStr || isNaN(valorTotal)) {
-      mostrarErro("Preencha data e valor corretamente.");
-      return false;
-    }
-
-    const [ano, mes, dia] = dataStr.split('-').map(Number);
-    let ajusteFatura = 0;
-    let novoLimiteCalculado = null; // Variável temporária para o limite
-
-    // 2. Validação do Cartão (SEM SALVAR AINDA)
-    if (isCartao) {
-      const cartaoObj = await db.cartoes.get(cartaoId);
-      if (!cartaoObj) {
-        mostrarErro("Selecione um cartão válido.");
-        return false;
-      }
-
-      if (cartaoObj.limiteAtual < valorTotal) {
-        mostrarErro("Limite insuficiente!");
-        return false;
-      }
-
-      const diaFechamento = cartaoObj.fechamento || 1;
-      if (dia >= diaFechamento) {
-        ajusteFatura = 1;
-      }
-
-      // APENAS CALCULAMOS, não salvamos no banco ainda
-      novoLimiteCalculado = cartaoObj.limiteAtual - valorTotal;
-    }
-
-    const valorParcela = valorTotal / parcelas;
-
-    // 3. Loop de Salvamento das Despesas
-    // Se algo der erro aqui, o código pula para o CATCH e o limite do cartão nunca é alterado
-    for (let i = 0; i < parcelas; i++) {
-      const dataParcela = new Date(ano, (mes - 1) + i + ajusteFatura, dia, 12, 0, 0);
-
-      await db.despesas.add({
-        data: dataParcela,
-        timestamp: dataParcela.getTime(),
-        valor: valorParcela,
-        descricao: descricao,
-        categoriaId,
-        subcategoriaId,
-        pessoaId,
-        formaPagamento,
-        pago: isCartao ? false : pago,
-        cartaoId,
-        parcelas,
-        parcelaAtual: i + 1,
-        createdAt: new Date()
-      });
-    }
-
-    // 4. SÓ AGORA ATUALIZAMOS O LIMITE (Depois que as despesas foram salvas com sucesso)
-    if (isCartao && novoLimiteCalculado !== null) {
-      await db.cartoes.update(cartaoId, { 
-        limiteAtual: novoLimiteCalculado 
-      });
-      console.log("💳 Limite do cartão atualizado com sucesso.");
-    }
-
-    // 5. Finalização
+    console.log("Despesa salva com sucesso!");
     fecharModal();
-    await Promise.all([atualizarDashboard(), listarTransacoes(), carregarResumoCartoes(),
-    carregarContasPendentes()]);
-    
-    if (typeof listarCartoes === "function") listarCartoes();
-
-    console.log("✅ Processo completo: Despesas salvas e limite atualizado!");
+    atualizarDashboard();
+    listarTransacoes();
+    carregarContasPendentes();
+    carregarResumoCartoes();
+    return true;
 
   } catch (error) {
-    // Se qualquer erro acontecer acima (inclusive no loop), cai aqui
-    console.error("❌ ERRO CRÍTICO: O processo foi cancelado e nada foi alterado.", error);
-    mostrarErro("Erro ao salvar. Nada foi alterado.");
+    const divErro = document.getElementById("formErro");
+    divErro.innerText = error.message;
+    divErro.style.display = "block";
+    return false;
   }
 }
+// O segurança (impede salvar sem marcar Pix ou Cartão).
+function validarMetodoPagamento(dadosBase) {
+  const elPix = document.getElementById("togglePix");
+  const elCartao = document.getElementById("toggleCartao");
+
+  // 1. Validação Global (Esses dois sempre existem no modal)
+  if (!elPix.checked && !elCartao.checked) {
+    throw new Error("⚠️ Você precisa escolher entre PIX ou CARTÃO!");
+  }
+
+  // 2. Validação Específica do Pix
+  if (elPix.checked) {
+    const elFinan = document.getElementById("checkFinanciamento");
+    // Se marcou financiamento, precisamos validar os meses
+    if (elFinan && elFinan.checked) {
+      const meses = document.getElementById("qtdMesesFinanciamento").value;
+      if (!meses || meses < 2) throw new Error("⚠️ Informe as parcelas do financiamento.");
+    }
+  }
+
+  // 3. Validação Específica do Cartão
+  if (elCartao.checked) {
+    const elSeletorCartao = document.getElementById("cartao");
+    if (!elSeletorCartao || !elSeletorCartao.value) {
+      throw new Error("⚠️ Selecione qual cartão foi utilizado.");
+    }
+  }
+}
+
+// O distribuidor (decide se vai para comum ou financiamento).
+async function processarSalvamentoPix(dadosBase) {
+  const subtipo = identificarSubtipoPix();
+
+  if (subtipo === 'financiamento') {
+    return await processarDespesaFinanciamento(dadosBase);
+  }
+
+  // Se cair aqui, é o Pix Comum
+  return await processarDespesaPixComum(dadosBase);
+}
+
+function identificarSubtipoPix() {
+  const elFinan = document.getElementById("checkFinanciamento");
+  
+  // Segurança: Se o elemento não for achado, ele não tenta ler o .checked
+  if (!elFinan) return 'comum'; 
+  
+  return elFinan.checked ? 'financiamento' : 'comum';
+}
+// O executor do Pix simples.
+async function processarDespesaPixComum(dadosBase) {
+  // Agora olha para o ID checkPagoPix que você definiu acima
+  const isPago = document.getElementById("checkPagoPix").checked;
+  return await db.despesas.add({
+    ...dadosBase,
+    formaPagamento: 'pix',
+    pago: isPago ? 1 : 0
+  });
+}
+// O executor do loop de parcelas (usa a calcularProximaData).
+async function processarDespesaFinanciamento(dadosBase) {
+  const qtd = parseInt(document.getElementById("qtdMesesFinanciamento").value);
+  const grupoId = `FIN-${Date.now()}`; // Identificador único para este contrato
+  
+  const promessas = [];
+  for (let i = 1; i <= qtd; i++) {
+    promessas.push(db.despesas.add({
+      ...dadosBase,
+      data: calcularProximaData(dadosBase.data, i - 1),
+      parcelaAtual: i,
+      parcelas: qtd,
+      grupoParcelas: grupoId,
+      formaPagamento: 'financiamento',
+      pago: 0 // Nasce como dívida
+    }));
+  }
+  return await Promise.all(promessas);
+}
+// O executor do cartão.
+async function processarDespesaCartao(dadosBase) {
+  const cartaoId = parseInt(document.getElementById("cartao").value);
+  const isParcelado = document.getElementById("toggleParcelado").checked;
+  
+  // Se não for parcelado, qtd é 1. Se for, pega o valor do input.
+  const qtd = isParcelado ? parseInt(document.getElementById("despesaParcelas").value) : 1;
+  
+  // Só gera grupoId se houver mais de uma parcela
+  const grupoId = qtd > 1 ? `CARD-${Date.now()}` : null;
+
+  // 1. O valor total para abater o limite é sempre o valor bruto digitado
+  const valorTotalCompra = dadosBase.valor;
+  
+  // 2. O valor de cada registro (parcela) no banco
+  const valorPorParcela = valorTotalCompra / qtd;
+
+  // 3. Atualiza o limite do cartão (UMA VEZ SÓ)
+  const cartao = await db.cartoes.get(cartaoId);
+  if (cartao) {
+    const novoLimite = cartao.limiteAtual - valorTotalCompra;
+    await db.cartoes.update(cartaoId, { limiteAtual: novoLimite });
+  }
+
+  // 4. Gera o(s) registro(s) no banco
+  const promessas = [];
+  for (let i = 1; i <= qtd; i++) {
+    promessas.push(db.despesas.add({
+      ...dadosBase,
+      valor: valorPorParcela, // Se for à vista, valorPorParcela == valorTotalCompra
+      data: calcularProximaData(dadosBase.data, i - 1),
+      cartaoId: cartaoId,
+      parcelaAtual: i,
+      parcelas: qtd,
+      grupoParcelas: grupoId,
+      formaPagamento: 'cartao',
+      pago: 0 
+    }));
+  }
+  
+  return await Promise.all(promessas);
+}
+//Faz as datas pularem de mês em mês.
+function calcularProximaData(dataString, mesesAdicionais) {
+    // dataString: "2026-03-31"
+    const partes = dataString.split("-").map(Number);
+    const anoOriginal = partes[0];
+    const mesOriginal = partes[1]; // 1-12
+    const diaOriginal = partes[2];
+
+    // Cria a data no mês alvo
+    let dataAlvo = new Date(anoOriginal, (mesOriginal - 1) + mesesAdicionais, diaOriginal);
+
+    // Se o dia da data gerada não for igual ao dia original, 
+    // significa que o mês é mais curto (ex: 31 de Março virou 1 de Maio)
+    if (dataAlvo.getDate() !== diaOriginal) {
+        // Ajustamos para o último dia do mês anterior (que é o mês correto da parcela)
+        dataAlvo.setDate(0); 
+    }
+
+    // Retorna no formato YYYY-MM-DD blindado
+    const y = dataAlvo.getFullYear();
+    const m = String(dataAlvo.getMonth() + 1).padStart(2, '0');
+    const d = String(dataAlvo.getDate()).padStart(2, '0');
+    
+    return `${y}-${m}-${d}`;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function carregarCategorias() {
   const select = document.getElementById("categoria");
@@ -717,4 +862,3 @@ async function carregarCartoes() {
     `;
   });
 }
-

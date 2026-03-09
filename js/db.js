@@ -1,8 +1,8 @@
 const db = new Dexie("FinancasDB");
 
-db.version(14).stores({
+db.version(16).stores({
   receitas: "++id, valor, data, pessoaId",
-  despesas: "++id, data, valor, categoriaId, subcategoriaId, descricao, pessoaId, formaPagamento, pago, cartaoId, parcelas, parcelaAtual",
+  despesas: "++id, data, valor, categoriaId, subcategoriaId, descricao, pessoaId, formaPagamento, pago, cartaoId, parcelas, parcelaAtual, grupoParcelas",
   cartoes: "++id, nome, limite, limiteAtual, fechamento, vencimento, cor",
   categorias: "++id, nome, cor, icone",
   subcategorias: "++id, nome, categoriaId",

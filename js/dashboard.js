@@ -115,12 +115,10 @@ function formatarMoeda(valor) {
 }
 
 async function carregarResumoCartoes() {
-
   const mesInput = document.getElementById("mesSelecionado").value;
   if (!mesInput) return;
 
   const [ano, mes] = mesInput.split("-").map(Number);
-
   const hoje = new Date();
 
   const cartoes = await db.cartoes.toArray();
@@ -130,62 +128,55 @@ async function carregarResumoCartoes() {
   container.innerHTML = "";
 
   for (const cartao of cartoes) {
-
     const diaFechamento = Number(cartao.fechamento);
 
-    // 📅 Define ciclo da fatura
+    // 📅 Define ciclo da fatura (Horário local)
     const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
     const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-    // 🧮 Filtra despesas do cartão dentro do ciclo
+    // 🧮 Filtra despesas com neutralização de fuso (T12:00:00)
     const despesasCartao = despesas.filter(d => {
-      if (d.cartaoId !== cartao.id) return false;
-      if (d.formaPagamento !== "cartao") return false;
+      if (d.cartaoId !== cartao.id || d.formaPagamento !== "cartao") return false;
 
-      const dataDespesa = new Date(d.data);
+      // FIX: Força o meio-dia para a despesa não mudar de dia/mês no fuso
+      const dataDespesa = new Date(d.data + 'T12:00:00');
       return dataDespesa >= dataInicio && dataDespesa <= dataFim;
     });
 
-    // 💰 Soma da fatura
-    const totalFatura = despesasCartao.reduce((total, d) => {
-      return total + (Number(d.valor) || 0);
-    }, 0);
+    const totalFatura = despesasCartao.reduce((total, d) => total + (Number(d.valor) || 0), 0);
 
-    const limiteGasto = totalFatura;
-    const limiteDisponivel = Number(cartao.limite) - limiteGasto;
+    // 💰 LIMITE: 
+    // totalFatura = o que você vai pagar ESTE mês.
+    // cartao.limiteAtual = o que sobrou de limite real no banco (considerando parcelas futuras).
+    const limiteDisponivel = Number(cartao.limiteAtual) || 0;
+    const limiteUsadoTotal = Number(cartao.limite) - limiteDisponivel;
 
-    // 📌 Define status correta
-    const estaNoMesAtual =
-      hoje.getFullYear() === ano &&
-      hoje.getMonth() === mes - 1;
-
+    // 📌 Status da Fatura
+    const estaNoMesAtual = hoje.getFullYear() === ano && hoje.getMonth() === mes - 1;
     let faturaFechada = false;
 
     if (estaNoMesAtual) {
       faturaFechada = hoje.getDate() > diaFechamento;
-    } else if (hoje > dataFim) {
-      faturaFechada = true;
+    } else {
+      const dataRefFiltro = new Date(ano, mes - 1, diaFechamento);
+      faturaFechada = hoje > dataRefFiltro;
     }
 
     const status = faturaFechada ? "Fechada" : "Aberta";
 
-    // 🎨 Render
-    const porcentagem = Math.min((limiteGasto / cartao.limite) * 100, 100);
+    // 🎨 Render: Porcentagem baseada no limite TOTAL do cartão
+    const porcentagem = Math.min((limiteUsadoTotal / cartao.limite) * 100, 100);
 
     container.innerHTML += `
     <div class="card-cartao" onclick="abrirDetalheCartao(${cartao.id}, '${mesInput}')">
-
       <div class="cartao-topo">
         <h3>${cartao.nome}</h3>
         <span class="status-fatura ${status.toLowerCase()}">${status}</span>
       </div>
 
       <div class="valor-fatura">
+        <small>Fatura do Mês:</small><br>
         ${formatarMoeda(totalFatura)}
-      </div>
-
-      <div class="limite-info">
-        ${formatarMoeda(limiteGasto)} de ${formatarMoeda(cartao.limite)}
       </div>
 
       <div class="barra-limite">
@@ -193,9 +184,9 @@ async function carregarResumoCartoes() {
       </div>
 
       <div class="limite-disponivel">
-        Disponível: ${formatarMoeda(limiteDisponivel)}
+        <span>Disponível: ${formatarMoeda(limiteDisponivel)}</span>
+        <span>Total: ${formatarMoeda(cartao.limite)}</span>
       </div>
-
     </div>
     `;
   }
@@ -419,11 +410,11 @@ async function visualizarComprovante(tipo, referenciaId) {
 }
 
 async function carregarContasPendentes() {
-
   const mesInput = document.getElementById("mesSelecionado").value;
   if (!mesInput) return;
 
-  const [ano, mes] = mesInput.split("-").map(Number);
+  // Pegamos os números exatos do filtro (ex: 2026 e 03)
+  const [anoFiltro, mesFiltro] = mesInput.split("-").map(Number);
   const hoje = new Date();
 
   const container = document.getElementById("contasPendentes");
@@ -444,119 +435,95 @@ async function carregarContasPendentes() {
   // =========================
   // PIX NÃO PAGOS
   // =========================
-
   const pixNaoPagos = despesas.filter(d => {
-    if (d.formaPagamento !== "pix") return false;
-    if (d.pago !== false) return false;
+    if (d.formaPagamento !== "pix" && d.formaPagamento !== "financiamento") return false;
+    if (Number(d.pago) !== 0) return false;
 
-    const data = new Date(d.data);
-    return data.getFullYear() === ano &&
-           data.getMonth() === mes - 1;
+    // Lógica Blindada: Quebramos a string "2026-03-01" manualmente
+    const [anoD, mesD] = d.data.split("-").map(Number);
+    
+    // Comparamos número com número. Sem conversão de fuso!
+    return anoD === anoFiltro && mesD === mesFiltro;
   });
 
   pixNaoPagos.forEach(d => {
-
-    const dataVencimento = new Date(d.data);
+    // Para exibição, usamos o meio-dia para garantir que o getDate() não retroceda
+    const dataRef = new Date(d.data + 'T12:00:00');
+    const sufixoParcela = d.parcelaAtual ? ` (${d.parcelaAtual}/${d.parcelas})` : "";
 
     pendencias.push({
-      data: dataVencimento,
+      data: dataRef,
       html: `
         <div class="pendente-item">
-          <strong>${d.descricao || "Sem descrição"}</strong>
-          <small>Vence dia ${dataVencimento.getDate()}</small>
+          <strong>${d.descricao || "Sem descrição"}${sufixoParcela}</strong>
+          <small>Vence dia ${dataRef.getDate()}</small>
           <p>${formatarMoeda(Number(d.valor))}</p>
-          <button onclick="abrirModalPagamentoPix(${d.id})">
-            Pagar
-          </button>
+          <button onclick="abrirModalPagamentoPix(${d.id})">Pagar</button>
         </div>
       `
     });
-
   });
 
   // =========================
-  // FATURAS
+  // FATURAS (CARTÃO)
   // =========================
-
   for (const cartao of cartoes) {
-
     const diaFechamento = Number(cartao.fechamento);
     const diaVencimento = Number(cartao.vencimento);
 
-    const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
-    const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
-
+    // Definimos o ciclo usando o horário local explicitamente
+    const dataFim = new Date(anoFiltro, mesFiltro - 1, diaFechamento, 23, 59, 59);
+    const dataInicio = new Date(anoFiltro, mesFiltro - 2, diaFechamento + 1, 0, 0, 0);
+    
     const jaPaga = pagamentosFatura.find(p =>
-      p.cartaoId === cartao.id &&
-      p.ano === ano &&
-      p.mes === mes
+      p.cartaoId === cartao.id && p.ano === anoFiltro && p.mes === mesFiltro
     );
 
     if (jaPaga) continue;
 
-    const estaNoMesAtual =
-      hoje.getFullYear() === ano &&
-      hoje.getMonth() === mes - 1;
-
+    // Lógica de fechamento
+    const estaNoMesAtual = hoje.getFullYear() === anoFiltro && hoje.getMonth() === mesFiltro - 1;
     let faturaFechada = false;
 
     if (estaNoMesAtual) {
       faturaFechada = hoje.getDate() > diaFechamento;
-    } else if (hoje > dataFim) {
-      faturaFechada = true;
+    } else {
+      // Se o mês selecionado é passado, a fatura com certeza já fechou
+      const dataReferenciaFiltro = new Date(anoFiltro, mesFiltro - 1, diaFechamento);
+      faturaFechada = hoje > dataReferenciaFiltro;
     }
 
     if (!faturaFechada) continue;
 
     const despesasCartao = despesas.filter(d => {
-      if (d.cartaoId !== cartao.id) return false;
-      if (d.formaPagamento !== "cartao") return false;
-
-      const data = new Date(d.data);
-      return data >= dataInicio && data <= dataFim;
+      if (d.cartaoId !== cartao.id || d.formaPagamento !== "cartao") return false;
+      
+      // Para o filtro de range do cartão, o objeto Date é necessário, 
+      // mas usamos o meio-dia para neutralizar o fuso.
+      const dataD = new Date(d.data + 'T12:00:00');
+      return dataD >= dataInicio && dataD <= dataFim;
     });
 
-    const totalFatura = despesasCartao.reduce(
-      (acc, d) => acc + Number(d.valor),
-      0
-    );
-
+    const totalFatura = despesasCartao.reduce((acc, d) => acc + Number(d.valor), 0);
     if (totalFatura === 0) continue;
 
-    const dataVencimento = new Date(ano, mes - 1, diaVencimento);
+    const dataVenc = new Date(anoFiltro, mesFiltro - 1, diaVencimento, 12, 0, 0);
 
     pendencias.push({
-      data: dataVencimento,
+      data: dataVenc,
       html: `
         <div class="pendente-item">
           <strong>${cartao.nome}</strong>
           <small>Vence dia ${diaVencimento}</small>
           <p>${formatarMoeda(totalFatura)}</p>
-          <button onclick="abrirModalPagamentoFatura(${cartao.id}, '${mesInput}')">
-            Pagar
-          </button>
+          <button onclick="abrirModalPagamentoFatura(${cartao.id}, '${mesInput}')">Pagar</button>
         </div>
       `
     });
-
   }
-
-  // =========================
-  // ORDENAR PELO VENCIMENTO
-  // =========================
 
   pendencias.sort((a, b) => a.data - b.data);
-
-  // =========================
-  // RENDER FINAL
-  // =========================
-
-  if (pendencias.length === 0) {
-    wrapper.innerHTML = "<p>🎉 Nenhuma conta pendente!</p>";
-  } else {
-    wrapper.innerHTML = pendencias.map(p => p.html).join("");
-  }
-
+  wrapper.innerHTML = pendencias.length === 0 ? "<p>🎉 Nenhuma conta pendente!</p>" : pendencias.map(p => p.html).join("");
 }
 
 async function abrirModalPagamentoFatura(cartaoId, mesInput) {
