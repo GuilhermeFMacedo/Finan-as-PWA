@@ -145,3 +145,21 @@ function limparErro(id = "formErro") {
   erroDiv.style.display = "none";
 }
 
+function notificarSucesso(mensagem) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `
+    <span class="material-symbols-outlined">check_circle</span>
+    <span>${mensagem}</span>
+  `;
+
+  container.appendChild(toast);
+
+  // Remove do DOM após a animação de fadeOut terminar
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}

@@ -94,6 +94,7 @@ async function salvarReceita() {
     
     // Atualiza a UI
     await Promise.all([
+      notificarSucesso("Receita salva com sucesso!"),
       listarTransacoes(),
       atualizarDashboard()
     ]);
@@ -300,14 +301,14 @@ async function excluirTransacao(id, tipo) {
             await db.cartoes.update(despesa.cartaoId, { 
               limiteAtual: cartao.limiteAtual + valorTotalEstorno 
             });
-            console.log(`✅ Estorno Total de ${formatarMoeda(valorTotalEstorno)} realizado.`);
+            notificarSucesso(`✅ Estorno Total de ${formatarMoeda(valorTotalEstorno)} realizado.`);
           }
         }
 
         // 3. Excluir todas as parcelas do grupo de uma vez
         const idsParaExcluir = todasDoGrupo.map(d => d.id);
         await db.despesas.bulkDelete(idsParaExcluir);
-        console.log(`🗑️ ${idsParaExcluir.length} parcelas excluídas.`);
+        notificarSucesso(`🗑️ ${idsParaExcluir.length} parcelas excluídas.`);
 
       } else {
         // --- Caso seja uma despesa única (sem grupo) ---
@@ -619,7 +620,7 @@ async function salvarDespesa() {
       resultado = await processarSalvamentoPix(dadosBase);
     }
 
-    console.log("Despesa salva com sucesso!");
+    notificarSucesso("Despesa salva com sucesso!");
     fecharModal();
     atualizarDashboard();
     listarTransacoes();

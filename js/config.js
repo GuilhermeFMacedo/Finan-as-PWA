@@ -335,7 +335,7 @@ async function salvarCartao() {
       vencimento,
       cor
     });
-
+    notificarSucesso("Cartão criado com sucesso!");
     fecharModal();
     listarCartoes(); // Atualiza a lista na tela
   } catch (erro) {
@@ -377,7 +377,7 @@ async function salvarCategoria() {
       icone: icone,
       cor: cor
     });
-
+    notificarSucesso("Categoria criada com sucesso!");
     fecharModal();
     listarCategorias();
 
@@ -402,7 +402,7 @@ async function salvarSubcategoria(categoriaId) {
     nome,
     categoriaId
   });
-
+  notificarSucesso("SubCategoria criada com sucesso!");
   fecharModal();
   listarCategorias();
 }
@@ -413,7 +413,7 @@ async function salvarPessoa() {
   if (!nome) return;
 
   await db.pessoas.add({ nome });
-
+  notificarSucesso("Pessoa criada com sucesso!");
   fecharModal();
   listarPessoas();
 }
@@ -848,7 +848,7 @@ async function importarDados(file) {
           "sucesso"
         );
 
-        console.log("CONFIRMOU");
+        notificarSucesso("CONFIRMOU");
 
         setTimeout(() => location.reload(), 1500);
       }

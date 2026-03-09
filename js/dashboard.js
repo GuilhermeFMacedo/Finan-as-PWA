@@ -357,7 +357,7 @@ async function pagarFaturaComComprovante(cartaoId, mesInput) {
     dataUpload: new Date()
   });
 
-  alert("Fatura paga com comprovante salvo!");
+  notificarSucesso("Fatura paga com comprovante salvo!");
 
   carregarResumoCartoes();
 }
@@ -386,7 +386,7 @@ async function pagarPixComComprovante(despesaId) {
     dataUpload: new Date()
   });
 
-  alert("Pix marcado como pago com comprovante!");
+  notificarSucesso("Pix marcado como pago com comprovante!");
 
   atualizarDashboard();
 }
@@ -626,7 +626,7 @@ async function confirmarPagamentoFatura(cartaoId, mesInput) {
       atualizarDashboard()
     ]);
 
-    alert("✅ Fatura paga com sucesso!");
+    notificarSucesso("Fatura paga e comprovante salvo!");
 }
 
 async function abrirModalPagamentoPix(despesaId) {
@@ -681,7 +681,7 @@ async function confirmarPagamentoPix(despesaId) {
       atualizarDashboard()
     ]);
 
-    alert("✅ Pix marcado como pago!");
+    notificarSucesso("✅ Pix pago e comprovante salvo!");
 }
 
 document.addEventListener("click", e => {
