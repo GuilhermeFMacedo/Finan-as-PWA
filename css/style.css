@@ -1589,11 +1589,13 @@ word-break: break-word;
 /* Inputs e Select */
 .mes-selector input,
 .mes-selector select {
-  flex: 1 1 0;
-  background-clip: padding-box;
-  min-width: 0; /* evita estourar no mobile */
 
-  padding: 10px 14px;
+  background-clip: padding-box;
+  flex: 1;
+  width: 100%; 
+  min-width: 0;
+
+  padding: 12px;
   border-radius: 14px;
 
   border: 1px solid rgba(255,255,255,0.1);
@@ -1608,7 +1610,24 @@ word-break: break-word;
 
   outline: none;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 
+/* =========================
+   RESPONSIVO MOBILE
+========================= */
+@media (max-width: 480px) {
+  .mes-selector {
+    flex-direction: column;
+    gap: 10px; /* Espaço entre os inputs empilhados */
+  }
+
+  .mes-selector input,
+  .mes-selector select {
+    flex: none; /* No modo coluna, não precisamos de flex grow/shrink relativo */
+    width: 100%; /* Agora sim eles ficam idênticos em largura */
+  }
+}
   
 }
 
@@ -1629,17 +1648,6 @@ word-break: break-word;
 .mes-selector select:focus {
   border-color: #22c55e;
   box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
-}
-
-
-/* =========================
-   RESPONSIVO MOBILE
-========================= */
-
-@media (max-width: 480px) {
-  .mes-selector {
-    flex-direction: column;
-  }
 }
 
 /* =========================

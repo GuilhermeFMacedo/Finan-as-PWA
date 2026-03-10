@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeiro-v2'; // Mudei para v2 para forçar atualização
+const CACHE_NAME = 'financeiro-v3'; // Mudei para v2 para forçar atualização
 const ASSETS = [
   './',
   './index.html',
