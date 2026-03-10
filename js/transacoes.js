@@ -274,57 +274,68 @@ async function listarTransacoes() {
 }
 
 async function excluirTransacao(id, tipo) {
-  const confirmou = await perguntarExcluir("Excluir Registro", "Esta transação faz parte de um grupo. Deseja excluir todas as parcelas vinculadas?");
+  // 1. Confirmação personalizada
+  const confirmou = await perguntarExcluir(
+    "Excluir Registro", 
+    "Deseja realmente apagar todas as parcelas deste grupo?"
+  );
+  
   if (!confirmou) return;
 
   try {
     if (tipo === "receita") {
       await db.receitas.delete(id);
+      notificarSucesso("Receita excluída!");
     } else {
       const despesa = await db.despesas.get(id);
       if (!despesa) return;
 
-      // 1. Identificar se faz parte de um grupo (Parcelado ou Financiamento)
+      // Log de debug para você ver no console exatamente o que ele está buscando
+      console.log("🔍 Tentando excluir grupo:", despesa.grupoParcelas);
+
       if (despesa.grupoParcelas) {
-        // Busca todas as parcelas desse mesmo grupo
+        // BLINDAGEM: Forçamos o ID do grupo a ser uma String para a busca não falhar
+        const idBusca = String(despesa.grupoParcelas);
+
         const todasDoGrupo = await db.despesas
           .where("grupoParcelas")
-          .equals(despesa.grupoParcelas)
+          .equals(idBusca)
           .toArray();
 
-        // 2. Se for Cartão, precisamos devolver o valor TOTAL do grupo ao limite
-        if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
-          const valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
-          const cartao = await db.cartoes.get(despesa.cartaoId);
+        console.log(`📦 Parcelas encontradas para o grupo ${idBusca}:`, todasDoGrupo.length);
+
+        if (todasDoGrupo.length > 0) {
+          // Lógica de Estorno (Exclusiva para Cartão)
+          if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
+            const valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
+            const cartao = await db.cartoes.get(despesa.cartaoId);
+            
+            if (cartao) {
+              await db.cartoes.update(despesa.cartaoId, { 
+                limiteAtual: cartao.limiteAtual + valorTotalEstorno 
+              });
+              console.log("💰 Limite estornado:", valorTotalEstorno);
+            }
+          }
+
+          // EXCLUSÃO EM MASSA: Apaga todas as parcelas (Financiamento ou Cartão)
+          const idsParaExcluir = todasDoGrupo.map(d => d.id);
+          await db.despesas.bulkDelete(idsParaExcluir);
           
-          if (cartao) {
-            await db.cartoes.update(despesa.cartaoId, { 
-              limiteAtual: cartao.limiteAtual + valorTotalEstorno 
-            });
-            notificarSucesso(`✅ Estorno Total de ${formatarMoeda(valorTotalEstorno)} realizado.`);
-          }
+          notificarSucesso(`${idsParaExcluir.length} parcelas removidas!`);
+        } else {
+          // Fallback: Se por algum erro de índice não achar o grupo, apaga a atual
+          await db.despesas.delete(id);
+          notificarSucesso("Registro removido.");
         }
-
-        // 3. Excluir todas as parcelas do grupo de uma vez
-        const idsParaExcluir = todasDoGrupo.map(d => d.id);
-        await db.despesas.bulkDelete(idsParaExcluir);
-        notificarSucesso(`🗑️ ${idsParaExcluir.length} parcelas excluídas.`);
-
       } else {
-        // --- Caso seja uma despesa única (sem grupo) ---
-        if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
-          const cartao = await db.cartoes.get(despesa.cartaoId);
-          if (cartao) {
-            await db.cartoes.update(despesa.cartaoId, { 
-              limiteAtual: cartao.limiteAtual + Number(despesa.valor) 
-            });
-          }
-        }
+        // Despesa comum (sem grupo)
         await db.despesas.delete(id);
+        notificarSucesso("Despesa excluída!");
       }
     }
 
-    // 4. Atualizar a interface
+    // 2. Atualização em Massa da UI
     await Promise.all([
       atualizarDashboard(),
       listarTransacoes(),
@@ -333,7 +344,8 @@ async function excluirTransacao(id, tipo) {
     ]);
     
   } catch (error) {
-    console.error("Erro ao excluir transação:", error);
+    console.error("❌ Erro na exclusão:", error);
+    notificarSucesso("Erro ao excluir registro.", "erro");
   }
 }
 
@@ -696,22 +708,38 @@ async function processarDespesaPixComum(dadosBase) {
 }
 // O executor do loop de parcelas (usa a calcularProximaData).
 async function processarDespesaFinanciamento(dadosBase) {
-  const qtd = parseInt(document.getElementById("qtdMesesFinanciamento").value);
-  const grupoId = `FIN-${Date.now()}`; // Identificador único para este contrato
+  const qtdInput = document.getElementById("qtdMesesFinanciamento");
+  const qtd = parseInt(qtdInput.value) || 2;
   
-  const promessas = [];
+  // 1. Geramos o carimbo de tempo e CONVERTEMOS PARA STRING na hora
+  // Isso garante que o valor seja tratado como um texto fixo
+  const grupoIdFixo = "FIN-" + Date.now().toString(); 
+
+  console.log("🚀 GRUPO GERADO (Deve ser igual para todas):", grupoIdFixo);
+
+  const objetosParaSalvar = [];
+
   for (let i = 1; i <= qtd; i++) {
-    promessas.push(db.despesas.add({
+    // 2. Criamos a data da parcela
+    const dataParcela = calcularProximaData(dadosBase.data, i - 1);
+    
+    // 3. Montamos o objeto (sem chamar funções no meio)
+    const parcela = {
       ...dadosBase,
-      data: calcularProximaData(dadosBase.data, i - 1),
+      data: dataParcela,
       parcelaAtual: i,
       parcelas: qtd,
-      grupoParcelas: grupoId,
+      grupoParcelas: grupoIdFixo, // <--- Aqui usamos a String fixa
       formaPagamento: 'financiamento',
-      pago: 0 // Nasce como dívida
-    }));
+      pago: 0 
+    };
+    
+    objetosParaSalvar.push(parcela);
   }
-  return await Promise.all(promessas);
+
+  // 4. Usamos bulkAdd para salvar tudo de uma vez. 
+  // É mais rápido e garante a atomicidade do grupo.
+  return await db.despesas.bulkAdd(objetosParaSalvar);
 }
 // O executor do cartão.
 async function processarDespesaCartao(dadosBase) {
