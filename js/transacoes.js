@@ -149,7 +149,6 @@ async function listarTransacoes() {
   
   if (!lista || !selMes || !selAno) return;
 
-  // No seu HTML, se o Janeiro for value="0", mantemos o parseInt
   const mesFiltro = parseInt(selMes.value); // 0-11
   const anoFiltro = parseInt(selAno.value);
 
@@ -166,33 +165,28 @@ async function listarTransacoes() {
     const subMap = new Map(subcats.map(s => [s.id, s.nome]));
     const pessMap = new Map(pess.map(p => [p.id, p.nome]));
 
-    // --- Normaliza e filtra usando SPLIT para evitar Fuso Horário ---
+    // --- Filtra e Ordena ---
     const todas = [
       ...receitas.map(r => ({ ...r, tipo: "receita" })),
       ...despesas.map(d => ({ ...d, tipo: "despesa" }))
     ].filter(t => {
-      // t.data é "2026-03-01"
       const [anoD, mesD] = t.data.split("-").map(Number);
-      
-      // mesD vem do banco como 1-12, mesFiltro geralmente é 0-11
-      // Ajustamos a comparação:
       return (mesD - 1) === mesFiltro && anoD === anoFiltro;
-    }).sort((a, b) => b.data.localeCompare(a.data)); // Ordenação de string funciona bem para YYYY-MM-DD
+    }).sort((a, b) => b.data.localeCompare(a.data));
 
     if (todas.length === 0) {
       lista.innerHTML = `<p class="lista-vazia">Nenhum dado para ${selMes.options[selMes.selectedIndex].text}/${anoFiltro}</p>`;
       return;
     }
 
-    // --- Função de Formatação Corrigida ---
     function formatarDataLocal(dataInput) {
-      // dataInput: "2026-03-01"
       const [ano, mes, dia] = dataInput.split("-");
       return `${dia}/${mes}/${ano}`;
     }
 
     lista.innerHTML = todas.map(t => {
       const isDespesa = t.tipo === "despesa";
+      const isFinanciamento = t.formaPagamento === 'financiamento';
       const dataFormatada = formatarDataLocal(t.data);
       
       const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
@@ -208,13 +202,18 @@ async function listarTransacoes() {
       const cartaoObj = carts.find(c => c.id === Number(t.cartaoId));
 
       const corDestaque = isDespesa ? (categoria.cor || '#f87171') : '#22c55e';
-      const corBadgeCard = (isDespesa && cartaoObj) ? cartaoObj.cor : 'transparent';
+      
+      // Define a cor da borda lateral do card baseada no método
+      let corBadgeMetodo = 'transparent';
+      if (isDespesa) {
+          if (cartaoObj) corBadgeMetodo = cartaoObj.cor;
+          else if (isFinanciamento) corBadgeMetodo = '#007bff'; // Azul para financiamento
+      }
 
-      // Lógica do Badge do Pix (agora checando 0 ou 1)
       const isPixPago = Number(t.pago) === 1;
 
       return `
-        <div class="card-extrato ${t.tipo}" style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeCard}">
+        <div class="card-extrato ${t.tipo}" style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeMetodo}">
           <div class="icon-box">
             <span class="material-symbols-outlined">
               ${isDespesa ? categoria.icone : 'trending_up'}
@@ -239,6 +238,11 @@ async function listarTransacoes() {
                     <span class="cartao-dot" style="background:${cartaoObj.cor}"></span>
                     ${cartaoObj.nome}
                   </div>
+                ` : isDespesa && isFinanciamento ? `
+                  <div class="extrato-cartao">
+                    <span class="cartao-dot" style="background:#007bff"></span>
+                    Financiamento
+                  </div>
                 ` : ''}
               </div>
             </div>
@@ -253,7 +257,7 @@ async function listarTransacoes() {
                 ${isDespesa ? `
                   ${t.formaPagamento === 'pix' || t.formaPagamento === 'financiamento'
                     ? `<span class="badge-pix ${isPixPago ? 'pago' : 'pendente'}">
-                        ${isPixPago ? 'Pix Pago' : 'Pix Pendente'}
+                        ${isPixPago ? 'Pago' : 'Pendente'}
                       </span>` : ''}
                   ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
                 ` : `<span class="badge-receita">Depósito</span>`}
