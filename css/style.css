@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Material Symbols Outlined";
+  src: url("../fonts/material-symbols.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+
 /* VARIÁVEIS DE CORES */
 :root {
   --bg-color: #0f0f0f;
@@ -31,13 +39,7 @@ body {
   margin: 0 auto;
 }
 
-@font-face {
-  font-family: "Material Symbols Outlined";
-  src: url("../fonts/material-symbols.woff2") format("woff2");
-  font-weight: 100 700;
-  font-style: normal;
-  font-display: block;
-}
+
 
 
 .config-grupo{
