@@ -1616,21 +1616,21 @@ word-break: break-word;
 /* =========================
    RESPONSIVO MOBILE
 ========================= */
-@media (max-width: 480px) {
+@media (max-width: 600px) { /* Aumentei para 600px para pegar todos os celulares */
   .mes-selector {
-    flex-direction: column;
-    gap: 10px; /* Espaço entre os inputs empilhados */
+    flex-direction: column !important; /* O !important aqui garante que o flex não tente ficar em linha */
+    align-items: stretch;
+    gap: 12px;
   }
 
   .mes-selector input,
   .mes-selector select {
-    flex: none; /* No modo coluna, não precisamos de flex grow/shrink relativo */
-    width: 100%; /* Agora sim eles ficam idênticos em largura */
+    width: 100% !important;
+    flex: none !important;
+    display: block; /* Garante que ele se comporte como um bloco ocupando a linha toda */
   }
 }
-  
 }
-
 /* Fundo das opções (evita branco no dark mode) */
 .mes-selector select option {
   background-color: #ffffff;
