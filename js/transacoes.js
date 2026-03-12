@@ -278,12 +278,7 @@ async function listarTransacoes() {
 }
 
 async function excluirTransacao(id, tipo) {
-  // 1. Confirmação personalizada
-  const confirmou = await perguntarExcluir(
-    "Excluir Registro", 
-    "Deseja realmente apagar todas as parcelas deste grupo?"
-  );
-  
+  const confirmou = await perguntarExcluir("Excluir Registro", "Deseja realmente apagar?");
   if (!confirmou) return;
 
   try {
@@ -294,52 +289,49 @@ async function excluirTransacao(id, tipo) {
       const despesa = await db.despesas.get(id);
       if (!despesa) return;
 
-      // Log de debug para você ver no console exatamente o que ele está buscando
-      console.log("🔍 Tentando excluir grupo:", despesa.grupoParcelas);
+      // --- LOGICA DE ESTORNO UNIFICADA ---
+      if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
+        let valorTotalEstorno = 0;
 
-      if (despesa.grupoParcelas) {
-        // BLINDAGEM: Forçamos o ID do grupo a ser uma String para a busca não falhar
-        const idBusca = String(despesa.grupoParcelas);
-
-        const todasDoGrupo = await db.despesas
-          .where("grupoParcelas")
-          .equals(idBusca)
-          .toArray();
-
-        console.log(`📦 Parcelas encontradas para o grupo ${idBusca}:`, todasDoGrupo.length);
-
-        if (todasDoGrupo.length > 0) {
-          // Lógica de Estorno (Exclusiva para Cartão)
-          if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
-            const valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
-            const cartao = await db.cartoes.get(despesa.cartaoId);
-            
-            if (cartao) {
-              await db.cartoes.update(despesa.cartaoId, { 
-                limiteAtual: cartao.limiteAtual + valorTotalEstorno 
-              });
-              console.log("💰 Limite estornado:", valorTotalEstorno);
-            }
-          }
-
-          // EXCLUSÃO EM MASSA: Apaga todas as parcelas (Financiamento ou Cartão)
+        if (despesa.grupoParcelas) {
+          // Se for grupo, soma todas as parcelas para devolver o limite total
+          const idBusca = String(despesa.grupoParcelas);
+          const todasDoGrupo = await db.despesas.where("grupoParcelas").equals(idBusca).toArray();
+          valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
+          
+          // Deleta o grupo
           const idsParaExcluir = todasDoGrupo.map(d => d.id);
           await db.despesas.bulkDelete(idsParaExcluir);
-          
-          notificarSucesso(`${idsParaExcluir.length} parcelas removidas!`);
         } else {
-          // Fallback: Se por algum erro de índice não achar o grupo, apaga a atual
+          // Se for compra única no cartão, estorna apenas o valor dela
+          valorTotalEstorno = Number(despesa.valor);
           await db.despesas.delete(id);
-          notificarSucesso("Registro removido.");
         }
+
+        // Atualiza o limite no banco
+        const cartao = await db.cartoes.get(despesa.cartaoId);
+        if (cartao) {
+          await db.cartoes.update(despesa.cartaoId, { 
+            limiteAtual: cartao.limiteAtual + valorTotalEstorno 
+          });
+          console.log("💰 Limite estornado:", valorTotalEstorno);
+        }
+        
+        notificarSucesso("Compra e limite estornados!");
       } else {
-        // Despesa comum (sem grupo)
-        await db.despesas.delete(id);
-        notificarSucesso("Despesa excluída!");
+        // --- DESPESA COMUM (DINHEIRO, PIX, ETC) OU FALLBACK ---
+        if (despesa.grupoParcelas) {
+           const idBusca = String(despesa.grupoParcelas);
+           const todasDoGrupo = await db.despesas.where("grupoParcelas").equals(idBusca).toArray();
+           await db.despesas.bulkDelete(todasDoGrupo.map(d => d.id));
+        } else {
+           await db.despesas.delete(id);
+        }
+        notificarSucesso("Registro removido.");
       }
     }
 
-    // 2. Atualização em Massa da UI
+    // Atualização da UI
     await Promise.all([
       atualizarDashboard(),
       listarTransacoes(),
