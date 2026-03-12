@@ -94,20 +94,15 @@ async function abrirPessoas() {
 }
 
 async function abrirHistorico() {
-  // 1. Seleciona a seção correta (conforme o ID que corrigimos no HTML)
   const container = document.getElementById("page-historico");
-
-  if (!container) {
-    console.error("Erro: A seção 'page-historico' não existe no HTML.");
-    return;
-  }
-
-
-  // 3. Seleciona onde a lista de transações vai de fato entrar
   const lista = document.getElementById("lista-historico");
+  if (!container || !lista) return;
+
+  const mesInput = document.getElementById("mesSelecionado").value;
+  const filtroPessoaId = document.getElementById("filtroPessoa").value;
+  const [anoFiltro, mesFiltro] = mesInput.split("-").map(Number);
 
   try {
-    // Busca os dados no banco (Dexie/IndexedDB)
     const [despesas, pagamentosFatura, cartoes, comprovantes] = await Promise.all([
       db.despesas.toArray(),
       db.pagamentosFatura.toArray(),
@@ -116,69 +111,79 @@ async function abrirHistorico() {
     ]);
 
     const cartMap = new Map(cartoes.map(c => [c.id, c]));
-    
-    // Funções auxiliares de formatação
-    const escape = str => str ? str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'": '&#39;' }[m])) : '';
     const fMoeda = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const fData = d => {
-      const data = new Date(d);
-      return `${data.getDate().toString().padStart(2,'0')}/${(data.getMonth()+1).toString().padStart(2,'0')}/${data.getFullYear()}`;
+       const data = new Date(d + (typeof d === 'string' && !d.includes('T') ? 'T12:00:00' : ''));
+       return `${data.getDate().toString().padStart(2,'0')}/${(data.getMonth()+1).toString().padStart(2,'0')}/${data.getFullYear()}`;
     };
 
     let htmlBuffer = "";
 
-    // --- SEÇÃO: PIX PAGOS ---
-    const pixPagos = despesas.filter(d => d.formaPagamento === "pix" && d.pago);
+    // Filtro Base para Despesas (Pix e Financiamento)
+    const despesasBase = despesas.filter(d => {
+      const estaPago = d.pago === true || d.pago === 1;
+      const eDaPessoa = filtroPessoaId === "todas" || Number(d.pessoaId) === Number(filtroPessoaId);
+      const dataD = new Date(d.data + 'T12:00:00');
+      const noMes = (dataD.getMonth() + 1) === mesFiltro && dataD.getFullYear() === anoFiltro;
+      return estaPago && eDaPessoa && noMes;
+    });
+
+    // --- LOOP 1: PIX ---
+    const pixPagos = despesasBase.filter(d => d.formaPagamento === "pix");
     if (pixPagos.length > 0) {
-      htmlBuffer += `<h4 class="config-grupo">PIX Pagos</h4>`;
+      htmlBuffer += `<h4 class="config-grupo">Pagamentos via PIX</h4>`;
       pixPagos.forEach(d => {
-        const comprovante = comprovantes.find(c => c.tipo === "pix" && c.referenciaId === d.id);
-        htmlBuffer += `
-          <div class="item-config" style="border-left: 4px solid #6366f1">
-            <div class="info-primaria">
-              <strong>${escape(d.descricao || "PIX")}</strong>
-            </div>
-            <div class="info-detalhes">
-              <small>Valor: <strong>${fMoeda(d.valor)}</strong></small>
-              <small>Data: ${fData(d.data)}</small>
-            </div>
-            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
-          </div>
-        `;
+        const comp = comprovantes.find(c => c.referenciaId === d.id);
+        htmlBuffer += gerarCardHistorico({
+          titulo: d.descricao,
+          valor: fMoeda(d.valor),
+          data: fData(comp ? comp.dataUpload : d.data),
+          cor: "#6366f1",
+          badge: "PIX",
+          comprovanteId: comp?.id
+        });
       });
     }
 
-    // --- SEÇÃO: FATURAS PAGAS ---
-    if (pagamentosFatura.length > 0) {
+    // --- LOOP 2: FINANCIAMENTOS ---
+    const financiamentos = despesasBase.filter(d => d.formaPagamento === "financiamento");
+    if (financiamentos.length > 0) {
+      htmlBuffer += `<h4 class="config-grupo">Financiamentos</h4>`;
+      financiamentos.forEach(d => {
+        const comp = comprovantes.find(c => c.referenciaId === d.id);
+        htmlBuffer += gerarCardHistorico({
+          titulo: d.descricao,
+          valor: fMoeda(d.valor),
+          data: fData(comp ? comp.dataUpload : d.data),
+          cor: "#7c3aed",
+          badge: d.parcelaAtual ? `${d.parcelaAtual}/${d.parcelas}` : "PARC",
+          comprovanteId: comp?.id
+        });
+      });
+    }
+
+    // --- LOOP 3: CARTÕES ---
+    const faturasPagos = pagamentosFatura.filter(p => p.mes === mesFiltro && p.ano === anoFiltro);
+    if (faturasPagos.length > 0) {
       htmlBuffer += `<h4 class="config-grupo">Faturas de Cartão</h4>`;
-      pagamentosFatura.forEach(p => {
+      faturasPagos.forEach(p => {
         const cartao = cartMap.get(p.cartaoId);
-        const comprovante = comprovantes.find(c => c.tipo === "fatura" && c.referenciaId === p.id);
-        htmlBuffer += `
-          <div class="item-config" style="border-left: 4px solid ${cartao?.cor || '#ccc'}">
-            <div class="info-primaria">
-              <strong>Fatura: ${escape(cartao?.nome || 'Cartão')}</strong>
-            </div>
-            <div class="info-detalhes">
-              <small>Valor: <strong>${fMoeda(p.valor)}</strong></small>
-              <small>Pago em: ${fData(p.dataPagamento)}</small>
-            </div>
-            ${comprovante ? `<button class="btn-ver-comprovante" onclick="verComprovante('${comprovante.id}')">📄 Ver Recibo</button>` : ''}
-          </div>
-        `;
+        const comp = comprovantes.find(c => c.tipo === "fatura" && c.referenciaId === p.id);
+        htmlBuffer += gerarCardHistorico({
+          titulo: `Fatura: ${cartao?.nome || 'Cartão'}`,
+          valor: fMoeda(p.valor),
+          data: fData(p.dataPagamento),
+          cor: cartao?.cor || "#ccc",
+          badge: "CARTÃO",
+          comprovanteId: comp?.id
+        });
       });
     }
 
-    // Se não houver nada em nenhuma categoria
-    if (!pixPagos.length && !pagamentosFatura.length) {
-      htmlBuffer = `<p class="vazio">🤷‍♂️ Nenhum pagamento registrado no histórico.</p>`;
-    }
-
-    lista.innerHTML = htmlBuffer;
+    lista.innerHTML = htmlBuffer || `<p class="vazio">🤷‍♂️ Nenhum pagamento neste mês.</p>`;
 
   } catch (erro) {
     console.error("Erro ao carregar histórico:", erro);
-    lista.innerHTML = '<p class="erro">Falha ao acessar o banco de dados.</p>';
   }
 }
 
@@ -683,6 +688,26 @@ function toggleGradeIcones() {
 }
 
 // Histórico/Comprovantes
+function gerarCardHistorico({ titulo, valor, data, badge, comprovanteId }) {
+  return `
+    <div class="item-historico">
+      <div class="header">
+        <strong>${titulo}</strong>
+        ${badge ? `<span class="badge-historico">${badge}</span>` : ''}
+      </div>
+      <div class="detalhes">
+        <span>Valor: <b style="color:var(--text-main)">${valor}</b></span>
+        <span>Pago em: ${data}</span>
+      </div>
+      ${comprovanteId ? `
+        <button class="btn-ver-comprovante" onclick="verComprovante('${comprovanteId}')">
+          <span class="material-symbols-outlined" style="font-size:16px">receipt_long</span>
+          Ver Recibo
+        </button>` : ''}
+    </div>
+  `;
+}
+
 async function verComprovante(comprovanteId) {
   const comprovante = await db.comprovantes.get(Number(comprovanteId));
   

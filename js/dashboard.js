@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   atualizarDashboard();
   carregarResumoCartoes();
   carregarContasPendentes();
+  calcularERolarSaldo();
 
   // Listener para mudança de mês
   mesInput.addEventListener("change", () => {
@@ -20,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Listener para o filtro de pessoa (Agora dentro do escopo correto!)
   if (filtroPessoa) {
-    filtroPessoa.addEventListener("change", atualizarDashboard);
+    filtroPessoa.addEventListener("change", atualizarDashboard, calcularERolarSaldo);
   }
 });
 
@@ -41,55 +42,112 @@ function atualizarUI(receita, despesa, saldo) {
 // Versão melhorada do atualizarDashboard que deve funcionar
 async function atualizarDashboard() {
   const mesInput = document.getElementById("mesSelecionado").value;
-  const filtroPessoaId = document.getElementById("filtroPessoa").value; // "todas" ou o ID da pessoa
-
+  const filtroPessoaId = document.getElementById("filtroPessoa").value;
   if (!mesInput) return;
 
-  // 1. Preparar Datas
-  const [ano, mes] = mesInput.split("-").map(Number);
-  const inicio = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
-  const fim = new Date(ano, mes, 0, 23, 59, 59, 999);
+  const [anoFiltro, mesFiltro] = mesInput.split("-").map(Number);
+  const inicioPadrao = new Date(anoFiltro, mesFiltro - 1, 1, 0, 0, 0);
+  const fimPadrao = new Date(anoFiltro, mesFiltro, 0, 23, 59, 59);
 
   try {
-    // 2. Buscar dados (Note que adicionei 'pessoas' aqui)
-    const [todasReceitas, todasDespesas, todasPessoas] = await Promise.all([
+    const [todasReceitas, todasDespesas, todasPessoas, todosCartoes, todosPagamentosFatura] = await Promise.all([
       db.receitas.toArray(),
       db.despesas.toArray(),
-      db.pessoas.toArray()
+      db.pessoas.toArray(),
+      db.cartoes.toArray(),
+      db.pagamentosFatura.toArray()
     ]);
 
-    // 3. Atualizar o Select de Pessoas (Dinâmico para quem for testar)
     popularFiltroPessoas(todasPessoas);
 
-    // 4. Lógica de Filtro Unificada
-    const filtrarItem = (item) => {
-      // Filtro de Data
-      const dataItem = new Date(item.data);
-      if (typeof item.data === 'string' && !item.data.includes('T')) {
-        dataItem.setHours(dataItem.getHours() + 12);
+    let totalReceita = 0;
+    let despesasPagas = 0;    // Pix/Dinheiro já marcados como pago
+    let despesasPendentes = 0; // Pix/Dinheiro não pagos + Faturas de cartão
+
+    // --- PROCESSAR RECEITAS ---
+    todasReceitas.forEach(r => {
+      if (filtrarPorPessoaEData(r, 'receita', filtroPessoaId, inicioPadrao, fimPadrao)) {
+        totalReceita += (Number(r.valor) || 0);
       }
-      const estaNoMes = dataItem >= inicio && dataItem <= fim;
+    });
 
-      // Filtro de Pessoa (Dinâmico!)
-      // Se "todas" estiver selecionado, retorna true. 
-      // Se não, verifica se o pessoaId do item bate com o selecionado.
-      const eDaPessoa = filtroPessoaId === "todas" || Number(item.pessoaId) === Number(filtroPessoaId);
+    // --- PROCESSAR DESPESAS ---
+    todasDespesas.forEach(d => {
+      if (!filtrarPorPessoaEData(d, 'despesa', filtroPessoaId, inicioPadrao, fimPadrao, todosCartoes, mesInput)) return;
 
-      return estaNoMes && eDaPessoa;
-    };
+      const valor = (Number(d.valor) || 0);
 
-    const receitasFiltradas = todasReceitas.filter(filtrarItem);
-    const despesasFiltradas = todasDespesas.filter(filtrarItem);
+      if (d.formaPagamento === 'cartao') {
+        // Para cartão, verificamos se a fatura deste mês específico já foi paga
+        const faturaPaga = todosPagamentosFatura.some(p => 
+          p.cartaoId === d.cartaoId && p.ano === anoFiltro && p.mes === mesFiltro
+        );
+        
+        if (faturaPaga) despesasPagas += valor;
+        else despesasPendentes += valor;
+      } else {
+        // Para Pix/Dinheiro, usamos o campo .pago da própria despesa
+        if (d.pago) despesasPagas += valor;
+        else despesasPendentes += valor;
+      }
+    });
 
-    // 5. Cálculos
-    const totalReceita = receitasFiltradas.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
-    const totalDespesa = despesasFiltradas.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+    const totalDespesaGeral = despesasPagas + despesasPendentes;
 
-    atualizarUI(totalReceita, totalDespesa, totalReceita - totalDespesa);
-
+    // Atualiza a UI com os novos indicadores
+    atualizarUI(totalReceita, totalDespesaGeral, totalReceita - totalDespesaGeral);
+    exibirDetalhamentoFluxo(despesasPagas, despesasPendentes);
+    calcularERolarSaldo();
   } catch (error) {
     console.error("Erro no Dashboard:", error);
   }
+}
+
+function exibirDetalhamentoFluxo(pagas, pendentes) {
+  const container = document.getElementById("detalheFluxo");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="item-fluxo">
+      <div class="header-item">
+        <span class="material-symbols-outlined" style="font-size: 14px; color: var(--success)">check_circle</span>
+        <span>Liquidado</span>
+      </div>
+      <span class="valor-pago">${formatarMoeda(pagas)}</span>
+    </div>
+
+    <div class="item-fluxo">
+      <div class="header-item">
+        <span class="material-symbols-outlined" style="font-size: 14px; color: #f1c40f">schedule</span>
+        <span>Em Aberto</span>
+      </div>
+      <span class="valor-pendente">${formatarMoeda(pendentes)}</span>
+    </div>
+  `;
+}
+
+// Função auxiliar para organizar o filtro
+function filtrarPorPessoaEData(item, tipo, filtroPessoaId, inicio, fim, todosCartoes, mesInput) {
+  const eDaPessoa = filtroPessoaId === "todas" || Number(item.pessoaId) === Number(filtroPessoaId);
+  if (!eDaPessoa) return false;
+
+  if (tipo === 'receita' || item.formaPagamento !== 'cartao') {
+    const dataItem = new Date(item.data + 'T12:00:00');
+    return dataItem >= inicio && dataItem <= fim;
+  }
+
+  if (item.formaPagamento === 'cartao' && item.cartaoId) {
+    const cartao = todosCartoes.find(c => c.id === item.cartaoId);
+    if (!cartao) return false;
+    
+    const [anoF, mesF] = mesInput.split("-").map(Number);
+    const dataDespesa = new Date(item.data + 'T12:00:00');
+    const dataFimCiclo = new Date(anoF, mesF - 1, Number(cartao.fechamento), 23, 59, 59);
+    const dataInicioCiclo = new Date(anoF, mesF - 2, Number(cartao.fechamento) + 1, 0, 0, 0);
+    
+    return dataDespesa >= dataInicioCiclo && dataDespesa <= dataFimCiclo;
+  }
+  return false;
 }
 
 // Função para preencher o select de pessoas sem apagar a opção "Todas"
@@ -287,11 +345,72 @@ async function abrirDetalhePessoa(cartaoId, pessoaId, mesInput) {
 }
 
 
+async function calcularERolarSaldo() {
+    const mesInput = document.getElementById("mesSelecionado").value;
+    const filtroPessoaId = document.getElementById("filtroPessoa").value; // Pegamos o filtro de pessoa
+    if (!mesInput) return;
 
+    const [anoF, mesF] = mesInput.split("-").map(Number);
+    const dataLimiteMesAtual = new Date(anoF, mesF - 1, 1, 0, 0, 0);
 
+    const [receitas, despesas, todosCartoes] = await Promise.all([
+        db.receitas.toArray(),
+        db.despesas.toArray(),
+        db.cartoes.toArray()
+    ]);
 
+    // Função auxiliar interna para não repetir a lógica de filtro de pessoa
+    const eDaPessoa = (item) => filtroPessoaId === "todas" || Number(item.pessoaId) === Number(filtroPessoaId);
 
+    // 1. Receitas: Filtradas por Pessoa e Data Real
+    const totalReceitas = receitas
+        .filter(r => eDaPessoa(r) && new Date(r.data + 'T12:00:00') < dataLimiteMesAtual)
+        .reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
 
+    // 2. Despesas: Filtradas por Pessoa e Competência (Cartão vs Real)
+    const totalDespesas = despesas
+        .filter(d => {
+            // Primeiro, verifica se é da pessoa selecionada
+            if (!eDaPessoa(d)) return false;
+
+            const dataDespesa = new Date(d.data + 'T12:00:00');
+
+            // Se NÃO for cartão, data real < primeiro dia do mês atual
+            if (d.formaPagamento !== 'cartao') {
+                return dataDespesa < dataLimiteMesAtual;
+            }
+
+            // Se FOR cartão, lógica do dia de fechamento
+            const cartao = todosCartoes.find(c => c.id === d.cartaoId);
+            if (!cartao) return dataDespesa < dataLimiteMesAtual;
+
+            const diaFechamento = Number(cartao.fechamento);
+            let mesFatura = dataDespesa.getMonth();
+            let anoFatura = dataDespesa.getFullYear();
+
+            // Se a compra foi após o fechamento, joga para o mês seguinte
+            if (dataDespesa.getDate() > diaFechamento) {
+                mesFatura++;
+                if (mesFatura > 11) {
+                    mesFatura = 0;
+                    anoFatura++;
+                }
+            }
+
+            // A despesa só entra no saldo anterior se a FATURA dela venceu antes do mês atual
+            const dataVencimentoFatura = new Date(anoFatura, mesFatura, 1);
+            return dataVencimentoFatura < dataLimiteMesAtual;
+        })
+        .reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+
+    const saldoAnterior = totalReceitas - totalDespesas;
+
+    const el = document.getElementById("valorSaldoAnterior");
+    if (el) {
+        el.textContent = formatarMoeda(saldoAnterior);
+        el.style.color = saldoAnterior >= 0 ? "var(--success)" : "var(--danger)";
+    }
+}
 
 
 
@@ -691,6 +810,11 @@ document.addEventListener("click", e => {
     input.click();
   }
 });
+
+
+
+
+
 
 
 

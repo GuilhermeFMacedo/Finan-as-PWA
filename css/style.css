@@ -2208,23 +2208,68 @@ input[type="file"]::file-selector-button {
 
 
 
-/* Ajuste para a lista de histórico */
-.historico-container {
+/* Container principal do Histórico */
+#lista-historico {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-bottom: 20px;
+}
+
+/* Card de item do histórico */
+.item-historico {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.item-historico .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.item-historico strong {
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+/* Badge (o selinho de PIX, Parc, etc) */
+.badge-historico {
+    font-size: 10px;
+    background: var(--border);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.item-historico .detalhes {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
 }
 
 .btn-ver-comprovante {
-    background: transparent;
+    background: rgba(142, 68, 255, 0.1);
     color: var(--primary);
     border: 1px solid var(--primary);
-    padding: 6px;
-    border-radius: 6px;
+    padding: 8px;
+    border-radius: 8px;
     font-size: 12px;
-    align-self: flex-start;
-    margin-top: 5px;
+    font-weight: bold;
+    margin-top: 10px;
+    width: 100%; /* No celular fica melhor ocupar a largura toda */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
 }
 
 
@@ -2323,4 +2368,75 @@ input[type="file"]::file-selector-button {
 @keyframes fadeOut {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+
+
+
+/* CONTAINER DE FLUXO (PAGO VS PENDENTE) */
+.detalhe-fluxo-container {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.item-fluxo {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 16px; /* Seguindo o padrão dos seus outros cards */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-fluxo span:first-child {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.valor-pago {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--success); /* Usa o verde #2ecc71 do seu root */
+}
+
+.valor-pendente {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #f1c40f; /* Um amarelo/laranja que combina com o tema dark */
+}
+
+/* Pequeno ajuste para ícones se você quiser usar */
+.item-fluxo .header-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.card-rolagem {
+    margin-top: 15px;
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    padding: 12px;
+    border-radius: 18px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.card-rolagem span {
+    color: var(--text-secondary);
+}
+
+.card-rolagem strong {
+    font-size: 1rem;
 }
