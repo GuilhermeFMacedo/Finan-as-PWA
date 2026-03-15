@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeiro-v4.1';
+const CACHE_NAME = 'financeiro-v4.2';
 const ASSETS = [
   './',
   './index.html',
@@ -20,6 +20,22 @@ self.addEventListener('install', (e) => {
     caches.open(CACHE_NAME).then(cache => {
       console.log('✅ PWA: Arquivos cacheados');
       return cache.addAll(ASSETS);
+    })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          // Se o nome do cache mudou, deleta o antigo
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deletando cache antigo:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
