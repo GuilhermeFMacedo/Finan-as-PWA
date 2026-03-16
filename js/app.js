@@ -124,7 +124,7 @@ function perguntarExcluir(titulo, mensagem) {
 }
 
 // 4. Feedback ao Usuário
-function mostrarErro(mensagem, id = "formErro", autoHide = true, tipo = "erro") {
+function mostrarErro(mensagem, id = "formErro", tipo = "erro") {
   const erroDiv = document.getElementById(id);
   if (!erroDiv) return;
 
@@ -132,9 +132,9 @@ function mostrarErro(mensagem, id = "formErro", autoHide = true, tipo = "erro") 
   erroDiv.innerText = mensagem;
   erroDiv.style.display = "block";
 
-  if (autoHide) {
-    setTimeout(() => limparErro(id), 3000);
-  }
+  // Removido o autoHide automático para Erros de validação
+  // O erro só deve sair quando o usuário clicar em "Salvar" de novo 
+  // ou quando a função limparErro() for chamada no início do processo.
 }
 
 function limparErro(id = "formErro") {

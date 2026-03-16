@@ -173,57 +173,53 @@ function formatarMoeda(valor) {
 }
 
 async function carregarResumoCartoes() {
+  console.log("🚀 Iniciando carregarResumoCartoes...");
   const mesInput = document.getElementById("mesSelecionado").value;
-  if (!mesInput) return;
+  console.log("📅 Mes Selecionado (Input):", mesInput);
+  
+  if (!mesInput) {
+    console.warn("⚠️ Nenhum mês selecionado no input.");
+    return;
+  }
 
   const [ano, mes] = mesInput.split("-").map(Number);
   const hoje = new Date();
 
+  console.log("💾 Buscando cartões e despesas no DB...");
   const cartoes = await db.cartoes.toArray();
   const despesas = await db.despesas.toArray();
+  console.log(`📊 Total de cartões: ${cartoes.length} | Total de despesas: ${despesas.length}`);
 
   const container = document.getElementById("resumoCartoes");
   container.innerHTML = "";
 
   for (const cartao of cartoes) {
+    console.group(`💳 Processando Cartão: ${cartao.nome}`);
     const diaFechamento = Number(cartao.fechamento);
 
-    // 📅 Define ciclo da fatura (Horário local)
     const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
     const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-    // 🧮 Filtra despesas com neutralização de fuso (T12:00:00)
+    console.log(`🕒 Ciclo: ${dataInicio.toLocaleDateString()} até ${dataFim.toLocaleDateString()}`);
+
     const despesasCartao = despesas.filter(d => {
       if (d.cartaoId !== cartao.id || d.formaPagamento !== "cartao") return false;
 
-      // FIX: Força o meio-dia para a despesa não mudar de dia/mês no fuso
-      const dataDespesa = new Date(d.data + 'T12:00:00');
-      return dataDespesa >= dataInicio && dataDespesa <= dataFim;
+      const dataDespesa = new Date(d.data + 'T00:00:00');
+      const estaNoCiclo = dataDespesa >= dataInicio && dataDespesa <= dataFim;
+      return estaNoCiclo;
     });
 
     const totalFatura = despesasCartao.reduce((total, d) => total + (Number(d.valor) || 0), 0);
+    console.log(`💰 Despesas encontradas no ciclo: ${despesasCartao.length} | Total: R$ ${totalFatura}`);
 
-    // 💰 LIMITE: 
-    // totalFatura = o que você vai pagar ESTE mês.
-    // cartao.limiteAtual = o que sobrou de limite real no banco (considerando parcelas futuras).
     const limiteDisponivel = Number(cartao.limiteAtual) || 0;
-    const limiteUsadoTotal = Number(cartao.limite) - limiteDisponivel;
-
-    // 📌 Status da Fatura
-    const estaNoMesAtual = hoje.getFullYear() === ano && hoje.getMonth() === mes - 1;
-    let faturaFechada = false;
-
-    if (estaNoMesAtual) {
-      faturaFechada = hoje.getDate() > diaFechamento;
-    } else {
-      const dataRefFiltro = new Date(ano, mes - 1, diaFechamento);
-      faturaFechada = hoje > dataRefFiltro;
-    }
-
+    const faturaFechada = hoje > dataFim;
     const status = faturaFechada ? "Fechada" : "Aberta";
 
-    // 🎨 Render: Porcentagem baseada no limite TOTAL do cartão
-    const porcentagem = Math.min((limiteUsadoTotal / cartao.limite) * 100, 100);
+    console.log(`📌 Status: ${status} | Limite Disp: ${limiteDisponivel}`);
+
+    const porcentagem = Math.min(((Number(cartao.limite) - limiteDisponivel) / cartao.limite) * 100, 100);
 
     container.innerHTML += `
     <div class="card-cartao" onclick="abrirDetalheCartao(${cartao.id}, '${mesInput}')">
@@ -231,27 +227,25 @@ async function carregarResumoCartoes() {
         <h3>${cartao.nome}</h3>
         <span class="status-fatura ${status.toLowerCase()}">${status}</span>
       </div>
-
       <div class="valor-fatura">
         <small>Fatura do Mês:</small><br>
         ${formatarMoeda(totalFatura)}
       </div>
-
       <div class="barra-limite">
         <div class="barra-usada" style="width:${porcentagem}%"></div>
       </div>
-
       <div class="limite-disponivel">
         <span>Disponível: ${formatarMoeda(limiteDisponivel)}</span>
         <span>Total: ${formatarMoeda(cartao.limite)}</span>
       </div>
     </div>
     `;
+    console.groupEnd();
   }
 }
 
 async function abrirDetalheCartao(cartaoId, mesInput) {
-
+  console.log(`🔍 Abrindo detalhes do cartão ID: ${cartaoId} para o mês: ${mesInput}`);
   const [ano, mes] = mesInput.split("-").map(Number);
 
   const cartao = await db.cartoes.get(cartaoId);
@@ -259,53 +253,48 @@ async function abrirDetalheCartao(cartaoId, mesInput) {
   const pessoas = await db.pessoas.toArray();
 
   const diaFechamento = Number(cartao.fechamento);
-
   const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
   const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-  // Filtra pelo ciclo
   const despesasCiclo = despesas.filter(d => {
     if (d.formaPagamento !== "cartao") return false;
-    const dataDespesa = new Date(d.data);
+    const dataDespesa = new Date(d.data + 'T00:00:00'); // Ajustado para evitar fuso horário
     return dataDespesa >= dataInicio && dataDespesa <= dataFim;
   });
 
-  const agrupadoPorPessoa = {};
+  console.log(`🧾 Despesas filtradas para o detalhe:`, despesasCiclo);
 
+  const agrupadoPorPessoa = {};
   despesasCiclo.forEach(d => {
-    if (!agrupadoPorPessoa[d.pessoaId]) {
-      agrupadoPorPessoa[d.pessoaId] = 0;
-    }
+    if (!agrupadoPorPessoa[d.pessoaId]) agrupadoPorPessoa[d.pessoaId] = 0;
     agrupadoPorPessoa[d.pessoaId] += Number(d.valor);
   });
 
-  let html = `<div class="fatura-detalhe">
-  <h2>Detalhes da Fatura</h2>
-`;
+  console.log("👥 Agrupamento por pessoa:", agrupadoPorPessoa);
 
+  let html = `<div class="fatura-detalhe"><h2>Detalhes da Fatura</h2>`;
   for (const pessoaId in agrupadoPorPessoa) {
     const pessoa = pessoas.find(p => p.id == pessoaId);
-
+    if (!pessoa) {
+        console.error(`❌ Pessoa ID ${pessoaId} não encontrada no banco!`);
+        continue;
+    }
     html += `
-    <div class="fatura-pessoa"
-         onclick="abrirDetalhePessoa(${cartaoId}, ${pessoaId}, '${mesInput}')">
+    <div class="fatura-pessoa" onclick="abrirDetalhePessoa(${cartaoId}, ${pessoaId}, '${mesInput}')">
       <span class="nome">${pessoa.nome}</span>
       <span class="valor">${formatarMoeda(agrupadoPorPessoa[pessoaId])}</span>
     </div>
-  `;
+    `;
   }
-
   html += `</div>`;
-
   abrirModal("Fatura do Cartão", html);
 }
 
 async function abrirDetalhePessoa(cartaoId, pessoaId, mesInput) {
-
+  console.log(`👤 Abrindo gastos da Pessoa ID: ${pessoaId} no Cartão ID: ${cartaoId}`);
   const [ano, mes] = mesInput.split("-").map(Number);
 
   const cartao = await db.cartoes.get(cartaoId);
-
   const diaFechamento = Number(cartao.fechamento);
 
   const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
@@ -317,30 +306,22 @@ async function abrirDetalhePessoa(cartaoId, pessoaId, mesInput) {
 
   const despesasFiltradas = despesas.filter(d => {
     if (d.formaPagamento !== "cartao") return false;
-    const dataDespesa = new Date(d.data);
+    const dataDespesa = new Date(d.data + 'T00:00:00');
     return dataDespesa >= dataInicio && dataDespesa <= dataFim;
   });
 
-  let html = `
-<div class="fatura-gastos">
-  <h3>Gastos</h3>
-`;
+  console.log(`📝 Itens encontrados para a pessoa:`, despesasFiltradas);
 
+  let html = `<div class="fatura-gastos"><h3>Gastos</h3>`;
   despesasFiltradas.forEach(d => {
     html += `
     <div class="gasto-item">
-      <span class="descricao">
-        ${d.descricao || "Sem descrição"}
-      </span>
-      <span class="valor">
-        ${formatarMoeda(Number(d.valor))}
-      </span>
+      <span class="descricao">${d.descricao || "Sem descrição"}</span>
+      <span class="valor">${formatarMoeda(Number(d.valor))}</span>
     </div>
   `;
   });
-
   html += `</div>`;
-
   abrirModal("Detalhe da Pessoa", html);
 }
 

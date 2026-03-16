@@ -149,7 +149,7 @@ async function listarTransacoes() {
   
   if (!lista || !selMes || !selAno) return;
 
-  const mesFiltro = parseInt(selMes.value); // 0-11
+  const mesFiltro = parseInt(selMes.value);
   const anoFiltro = parseInt(selAno.value);
 
   try {
@@ -165,7 +165,6 @@ async function listarTransacoes() {
     const subMap = new Map(subcats.map(s => [s.id, s.nome]));
     const pessMap = new Map(pess.map(p => [p.id, p.nome]));
 
-    // --- Filtra e Ordena ---
     const todas = [
       ...receitas.map(r => ({ ...r, tipo: "receita" })),
       ...despesas.map(d => ({ ...d, tipo: "despesa" }))
@@ -187,6 +186,7 @@ async function listarTransacoes() {
     lista.innerHTML = todas.map(t => {
       const isDespesa = t.tipo === "despesa";
       const isFinanciamento = t.formaPagamento === 'financiamento';
+      const isDebito = t.formaPagamento === 'debito';
       const dataFormatada = formatarDataLocal(t.data);
       
       const valorFormatado = Number(t.valor).toLocaleString('pt-BR', {
@@ -203,14 +203,14 @@ async function listarTransacoes() {
 
       const corDestaque = isDespesa ? (categoria.cor || '#f87171') : '#22c55e';
       
-      // Define a cor da borda lateral do card baseada no método
+      // Cor da borda lateral: Débito usa a cor do cartão também
       let corBadgeMetodo = 'transparent';
       if (isDespesa) {
           if (cartaoObj) corBadgeMetodo = cartaoObj.cor;
-          else if (isFinanciamento) corBadgeMetodo = '#007bff'; // Azul para financiamento
+          else if (isFinanciamento) corBadgeMetodo = '#6366f1';
       }
 
-      const isPixPago = Number(t.pago) === 1;
+      const isPago = Number(t.pago) === 1;
 
       return `
         <div class="card-extrato ${t.tipo}" style="--cor-cat: ${corDestaque}; --cor-card: ${corBadgeMetodo}">
@@ -236,11 +236,11 @@ async function listarTransacoes() {
                 ${isDespesa && cartaoObj ? `
                   <div class="extrato-cartao">
                     <span class="cartao-dot" style="background:${cartaoObj.cor}"></span>
-                    ${cartaoObj.nome}
+                    ${cartaoObj.nome} ${isDebito ? '(Débito)' : ''}
                   </div>
                 ` : isDespesa && isFinanciamento ? `
                   <div class="extrato-cartao">
-                    <span class="cartao-dot" style="background:#007bff"></span>
+                    <span class="cartao-dot" style="background:#6366f1"></span>
                     Financiamento
                   </div>
                 ` : ''}
@@ -255,9 +255,9 @@ async function listarTransacoes() {
 
               <div class="extrato-badges">
                 ${isDespesa ? `
-                  ${t.formaPagamento === 'pix' || t.formaPagamento === 'financiamento'
-                    ? `<span class="badge-pix ${isPixPago ? 'pago' : 'pendente'}">
-                        ${isPixPago ? 'Pago' : 'Pendente'}
+                  ${['pix', 'financiamento', 'debito'].includes(t.formaPagamento)
+                    ? `<span class="badge-pix ${isPago ? 'pago' : 'pendente'}">
+                        ${isPago ? 'Pago' : 'Pendente'}
                       </span>` : ''}
                   ${t.parcelas > 1 ? `<span class="badge-parc">${t.parcelaAtual}/${t.parcelas}x</span>` : ''}
                 ` : `<span class="badge-receita">Depósito</span>`}
@@ -289,37 +289,36 @@ async function excluirTransacao(id, tipo) {
       const despesa = await db.despesas.get(id);
       if (!despesa) return;
 
-      // --- LOGICA DE ESTORNO UNIFICADA ---
+      // --- LOGICA DE EXCLUSÃO/ESTORNO ---
+      
+      // Se for Cartão de CRÉDITO (precisa devolver limite)
       if (despesa.formaPagamento === "cartao" && despesa.cartaoId) {
         let valorTotalEstorno = 0;
 
         if (despesa.grupoParcelas) {
-          // Se for grupo, soma todas as parcelas para devolver o limite total
           const idBusca = String(despesa.grupoParcelas);
           const todasDoGrupo = await db.despesas.where("grupoParcelas").equals(idBusca).toArray();
           valorTotalEstorno = todasDoGrupo.reduce((acc, d) => acc + Number(d.valor), 0);
           
-          // Deleta o grupo
-          const idsParaExcluir = todasDoGrupo.map(d => d.id);
-          await db.despesas.bulkDelete(idsParaExcluir);
+          await db.despesas.bulkDelete(todasDoGrupo.map(d => d.id));
         } else {
-          // Se for compra única no cartão, estorna apenas o valor dela
           valorTotalEstorno = Number(despesa.valor);
           await db.despesas.delete(id);
         }
 
-        // Atualiza o limite no banco
+        // Devolve o limite apenas se for Crédito
         const cartao = await db.cartoes.get(despesa.cartaoId);
         if (cartao) {
+          const novoLimiteEstornado = parseFloat((cartao.limiteAtual + valorTotalEstorno).toFixed(2));
           await db.cartoes.update(despesa.cartaoId, { 
-            limiteAtual: cartao.limiteAtual + valorTotalEstorno 
+            limiteAtual: novoLimiteEstornado
           });
-          console.log("💰 Limite estornado:", valorTotalEstorno);
         }
-        
         notificarSucesso("Compra e limite estornados!");
+
       } else {
-        // --- DESPESA COMUM (DINHEIRO, PIX, ETC) OU FALLBACK ---
+        // --- DÉBITO, PIX, FINANCIAMENTO OU DINHEIRO ---
+        // (Não mexe no limite do cartão)
         if (despesa.grupoParcelas) {
            const idBusca = String(despesa.grupoParcelas);
            const todasDoGrupo = await db.despesas.where("grupoParcelas").equals(idBusca).toArray();
@@ -425,10 +424,9 @@ window.toggleParcelado = function() {
 function abrirModalDespesa() {
   const hoje = new Date().toISOString().split("T")[0];
 
-  // 1. Injeta o HTML (Corrigido aspas no style do pixOpcoesAdicionais)
   abrirModal("Nova Despesa", `
     <form id="formDespesa">
-      <div id="formErro" class="form-erro" style="display:none; color: red; margin-bottom: 10px;"></div>
+      <div id="formErro" class="form-erro" style="display:none;"></div>
       
       <div class="form-group">
         <label>Data</label>
@@ -474,18 +472,15 @@ function abrirModalDespesa() {
       </div>
 
       <div id="pixOpcoesAdicionais" style="display:none; border-left: 3px solid #007bff; padding-left: 15px; margin: 10px 0;">
-        <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">Tipo de Pix:</p>
-        
+        <p>Tipo de Pix:</p>
         <div class="switch-group">
           <label>Já está pago?</label>
           <input type="checkbox" id="checkPagoPix">
         </div>
-
         <div class="switch-group">
           <label>É Financiamento?</label>
           <input type="checkbox" id="checkFinanciamento">
         </div>
-
         <div id="campoMesesFinanciamento" style="display:none;" class="form-group">
           <label>Duração (Meses)</label>
           <input type="number" id="qtdMesesFinanciamento" min="2" placeholder="Ex: 48">
@@ -493,27 +488,39 @@ function abrirModalDespesa() {
       </div>
 
       <div class="switch-group">
-        <label>Cartão de Crédito?</label>
+        <label>Cartão (Débito ou Crédito)?</label>
         <input type="checkbox" id="toggleCartao">
       </div>
-      
-      <div id="cartaoExtra" style="display:none; border-left: 3px solid #ffc107; padding-left: 15px; margin: 10px 0;">
+
+      <div id="cartaoExtra" style="display:none;">
         <div class="form-group">
           <label>Qual Cartão?</label>
           <select id="cartao">
             <option value="" disabled selected hidden>Selecione o Cartão</option>
           </select>
         </div>
-        
+
         <div class="switch-group">
-          <label>Parcelado?</label>
-          <input type="checkbox" id="toggleParcelado">
+          <label>
+            <input type="checkbox" id="checkDebito" name="tipoCartao" value="debito"> 
+            Débito
+          </label>
+          <label>
+            <input type="checkbox" id="checkCredito" name="tipoCartao" value="credito"> 
+            Crédito
+          </label>
         </div>
-        
-        <div id="parcelasExtra" style="display:none;">
-          <div class="form-group">
-            <label>Quantas Parcelas?</label>
-            <input type="number" id="despesaParcelas" min="1" value="1">
+
+        <div id="areaCredito" style="display:none;">
+          <div class="switch-group">
+            <label>Parcelado?</label>
+            <input type="checkbox" id="toggleParcelado">
+          </div>
+          <div id="parcelasExtra" style="display:none;">
+            <div class="form-group">
+              <label>Quantas Parcelas?</label>
+              <input type="number" id="despesaParcelas" min="1" value="1">
+            </div>
           </div>
         </div>
       </div>
@@ -522,49 +529,27 @@ function abrirModalDespesa() {
     </form>
   `);
 
-  // 2. Carregar dados (Assíncrono)
   carregarCategorias();
   carregarPessoas();
   carregarCartoes();
 
-  // 3. Selecionar Elementos
-  const form = document.getElementById("formDespesa");
-  const selCategoria = document.getElementById("categoria");
+  // --- ELEMENTOS PIX / FINANCIAMENTO ---
   const checkPix = document.getElementById("togglePix");
-  const checkCartao = document.getElementById("toggleCartao");
   const pixOpcoes = document.getElementById("pixOpcoesAdicionais");
-  const cartaoExtra = document.getElementById("cartaoExtra");
-  
-  const checkPago = document.getElementById("checkPagoPix");
+  const checkPagoPix = document.getElementById("checkPagoPix");
   const checkFinan = document.getElementById("checkFinanciamento");
-  const campoMeses = document.getElementById("campoMesesFinanciamento");
+  const campoMesesFinan = document.getElementById("campoMesesFinanciamento");
 
-  // --- LOGICA DOS CHECKBOXES PIX ---
+  // --- ELEMENTOS CARTÃO ---
+  const checkCartao = document.getElementById("toggleCartao");
+  const cartaoExtra = document.getElementById("cartaoExtra");
+  const checkDebito = document.getElementById("checkDebito");
+  const checkCredito = document.getElementById("checkCredito");
+  const areaCredito = document.getElementById("areaCredito");
+  const toggleParcelado = document.getElementById("toggleParcelado");
+  const parcelasExtra = document.getElementById("parcelasExtra");
 
-  checkPago.addEventListener("change", function() {
-    if (this.checked) {
-      checkFinan.checked = false;
-      campoMeses.style.display = "none";
-    }
-  });
-
-  checkFinan.addEventListener("change", function() {
-    campoMeses.style.display = this.checked ? "block" : "none";
-    if (this.checked) {
-      checkPago.checked = false;
-    }
-  });
-
-  // --- LOGICA DE INTERAÇÃO GERAL ---
-
-  selCategoria.addEventListener("change", async function() {
-    const grupoSub = document.getElementById("grupoSubcategoria");
-    if (this.value) {
-      grupoSub.style.display = "block";
-      await carregarSubcategorias(this.value);
-    }
-  });
-
+  // LÓGICA PIX & FINANCIAMENTO (O que estava faltando!)
   checkPix.addEventListener("change", function() {
     pixOpcoes.style.display = this.checked ? "block" : "none";
     if (this.checked) {
@@ -573,6 +558,19 @@ function abrirModalDespesa() {
     }
   });
 
+  checkFinan.addEventListener("change", function() {
+    campoMesesFinan.style.display = this.checked ? "block" : "none";
+    if (this.checked) checkPagoPix.checked = false;
+  });
+
+  checkPagoPix.addEventListener("change", function() {
+    if (this.checked) {
+      checkFinan.checked = false;
+      campoMesesFinan.style.display = "none";
+    }
+  });
+
+  // LÓGICA CARTÃO (DÉBITO VS CRÉDITO)
   checkCartao.addEventListener("change", function() {
     cartaoExtra.style.display = this.checked ? "block" : "none";
     if (this.checked) {
@@ -581,18 +579,44 @@ function abrirModalDespesa() {
     }
   });
 
-  document.getElementById("toggleParcelado").addEventListener("change", function() {
-    document.getElementById("parcelasExtra").style.display = this.checked ? "block" : "none";
+  checkDebito.addEventListener("change", function() {
+    if (this.checked) {
+      checkCredito.checked = false;
+      areaCredito.style.display = "none";
+      toggleParcelado.checked = false;
+      parcelasExtra.style.display = "none";
+    }
   });
 
-  form.addEventListener("submit", async function(e) {
+  checkCredito.addEventListener("change", function() {
+    if (this.checked) {
+      checkDebito.checked = false;
+      areaCredito.style.display = "block";
+    } else {
+      areaCredito.style.display = "none";
+    }
+  });
+
+  toggleParcelado.addEventListener("change", function() {
+    parcelasExtra.style.display = this.checked ? "block" : "none";
+  });
+
+  // CATEGORIA / SUBCATEGORIA
+  document.getElementById("categoria").addEventListener("change", async function() {
+    const grupoSub = document.getElementById("grupoSubcategoria");
+    if (this.value) {
+      grupoSub.style.display = "block";
+      await carregarSubcategorias(this.value);
+    }
+  });
+
+  // SALVAMENTO
+  document.getElementById("formDespesa").addEventListener("submit", async function(e) {
     e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
+    const btn = this.querySelector('button[type="submit"]');
     btn.disabled = true;
     btn.innerText = "Salvando...";
-
     const sucesso = await salvarDespesa();
-    
     if (!sucesso) {
       btn.disabled = false;
       btn.innerText = "Salvar Despesa";
@@ -613,42 +637,138 @@ function obterValoresCamposComuns() {
 }
 //A função principal (o Maestro).
 async function salvarDespesa() {
+  const formErro = "formErro";
+  limparErro(formErro); // Limpa erros anteriores antes de validar novamente
+
   try {
-    // 1. Coleta (Pega os dados brutos)
-    const dadosBase = obterValoresCamposComuns();
+    // 1. Validação de segurança: se algo estiver errado, o throw pula direto para o catch
+    validarMetodoPagamento();
 
-    // 2. Validação (Analisa os dados brutos + regras de método)
-    validarMetodoPagamento(dadosBase);
+    // 2. Coleta de dados básicos do formulário
+    const data = document.getElementById("despesaData").value;
+    const valor = parseFloat(document.getElementById("despesaValor").value);
+    const descricao = document.getElementById("despesaDescricao").value;
+    const categoriaId = document.getElementById("categoria").value;
+    const subcategoriaId = document.getElementById("subcategoria").value;
+    const pessoaId = document.getElementById("pessoa").value;
 
-    // 3. Identifica qual subtipo de função chamar
-    let resultado;
-    if (document.getElementById("toggleCartao").checked) {
-      resultado = await processarDespesaCartao(dadosBase);
-    } else {
-      resultado = await processarSalvamentoPix(dadosBase);
+    // Validação de campos obrigatórios
+    if (!valor || !categoriaId || !pessoaId) {
+      throw new Error("Preencha valor, categoria e pessoa!");
     }
 
-    notificarSucesso("Despesa salva com sucesso!");
+    const dadosBase = {
+      data,
+      valor,
+      descricao,
+      categoriaId: parseInt(categoriaId),
+      subcategoriaId: subcategoriaId ? parseInt(subcategoriaId) : null,
+      pessoaId: parseInt(pessoaId),
+      pago: 0 // Valor padrão inicial
+    };
+
+    const isPix = document.getElementById("togglePix").checked;
+    const isCartao = document.getElementById("toggleCartao").checked;
+
+    // 3. Execução do salvamento conforme o método escolhido
+    if (isPix) {
+      const isFinan = document.getElementById("checkFinanciamento").checked;
+      const isPago = document.getElementById("checkPagoPix").checked;
+
+      if (isFinan) {
+        const meses = parseInt(document.getElementById("qtdMesesFinanciamento").value);
+        await processarDespesaFinanciamento(dadosBase, meses); // Chama a função de parcelas de financiamento
+      } else {
+        await db.despesas.add({ 
+          ...dadosBase, 
+          formaPagamento: 'pix', 
+          pago: isPago ? 1 : 0 
+        });
+      }
+    } 
+    else if (isCartao) {
+      const cartaoId = document.getElementById("cartao").value;
+      const tipoSelecionado = document.querySelector('input[name="tipoCartao"]:checked').value;
+
+      if (tipoSelecionado === 'debito') {
+        // Débito: Salva como pago e registra o cartão, mas sem parcelas ou alteração de limite
+        await db.despesas.add({
+          ...dadosBase,
+          cartaoId: parseInt(cartaoId),
+          formaPagamento: 'debito',
+          pago: 1
+        });
+      } else {
+        // Crédito: Processa parcelamento e atualiza o limite do cartão
+        const isParcelado = document.getElementById("toggleParcelado").checked;
+        const meses = isParcelado ? parseInt(document.getElementById("despesaParcelas").value) : 1;
+        await processarDespesaCartaoCredito(dadosBase, meses, parseInt(cartaoId));
+      }
+    }
+
+    // 4. Finalização e atualização da interface
     fecharModal();
-    atualizarDashboard();
-    listarTransacoes();
-    carregarContasPendentes();
-    carregarResumoCartoes();
+    notificarSucesso("Despesa salva com sucesso!");
+    
+    await Promise.all([
+      atualizarDashboard(),
+      listarTransacoes(),
+      carregarResumoCartoes(),
+      carregarContasPendentes()
+    ]);
+
     return true;
 
   } catch (error) {
-    const divErro = document.getElementById("formErro");
-    divErro.innerText = error.message;
-    divErro.style.display = "block";
+    // Captura a mensagem do Error e exibe usando a sua função mostrarErro
+    console.error("Erro no fluxo de salvamento:", error);
+    mostrarErro(error.message, formErro); 
     return false;
   }
 }
+
+// Função auxiliar para o Crédito (para não poluir a principal)
+async function processarDespesaCartaoCredito(dadosBase, qtd, cartaoId) {
+  const grupoId = qtd > 1 ? `CARD-${Date.now()}` : null;
+  
+  // 🛠️ CORREÇÃO: Arredonda o valor da parcela para 2 casas decimais
+  const valorParcela = parseFloat((dadosBase.valor / qtd).toFixed(2));
+  
+  // Ajuste da última parcela (para cobrir centavos perdidos no arredondamento)
+  const diferencacentavos = parseFloat((dadosBase.valor - (valorParcela * qtd)).toFixed(2));
+
+  const cartao = await db.cartoes.get(cartaoId);
+  if (cartao) {
+    // 🛠️ CORREÇÃO: Garante que a subtração do limite não gere dízimas
+    const novoLimite = parseFloat((cartao.limiteAtual - dadosBase.valor).toFixed(2));
+    await db.cartoes.update(cartaoId, { limiteAtual: novoLimite });
+  }
+
+  const promessas = [];
+  for (let i = 1; i <= qtd; i++) {
+    // Na última parcela, somamos a diferença dos centavos
+    const valorFinalParcela = (i === qtd) ? (valorParcela + diferencacentavos) : valorParcela;
+
+    promessas.push(db.despesas.add({
+      ...dadosBase,
+      valor: parseFloat(valorFinalParcela.toFixed(2)), // Força 2 casas no DB
+      data: calcularProximaData(dadosBase.data, i - 1),
+      cartaoId,
+      parcelaAtual: i,
+      parcelas: qtd,
+      grupoParcelas: grupoId,
+      formaPagamento: 'cartao',
+      pago: 0
+    }));
+  }
+  return await Promise.all(promessas);
+}
 // O segurança (impede salvar sem marcar Pix ou Cartão).
-function validarMetodoPagamento(dadosBase) {
+function validarMetodoPagamento() {
   const elPix = document.getElementById("togglePix");
   const elCartao = document.getElementById("toggleCartao");
 
-  // 1. Validação Global (Esses dois sempre existem no modal)
+  // 1. Validação Global: Garante que um dos dois métodos principais foi escolhido
   if (!elPix.checked && !elCartao.checked) {
     throw new Error("⚠️ Você precisa escolher entre PIX ou CARTÃO!");
   }
@@ -656,22 +776,42 @@ function validarMetodoPagamento(dadosBase) {
   // 2. Validação Específica do Pix
   if (elPix.checked) {
     const elFinan = document.getElementById("checkFinanciamento");
-    // Se marcou financiamento, precisamos validar os meses
+    // Se marcou financiamento, precisamos validar as parcelas
     if (elFinan && elFinan.checked) {
       const meses = document.getElementById("qtdMesesFinanciamento").value;
-      if (!meses || meses < 2) throw new Error("⚠️ Informe as parcelas do financiamento.");
+      if (!meses || meses < 2) {
+        throw new Error("⚠️ Informe as parcelas do financiamento (mínimo 2).");
+      }
     }
   }
 
   // 3. Validação Específica do Cartão
   if (elCartao.checked) {
     const elSeletorCartao = document.getElementById("cartao");
+    const r_tipo = document.querySelector('input[name="tipoCartao"]:checked');
+
+    // Valida se o cartão físico foi selecionado
     if (!elSeletorCartao || !elSeletorCartao.value) {
       throw new Error("⚠️ Selecione qual cartão foi utilizado.");
     }
+
+    // Valida se o usuário marcou a bolinha de Débito ou Crédito
+    if (!r_tipo) {
+      throw new Error("⚠️ Informe se a operação é DÉBITO ou CRÉDITO.");
+    }
+    
+    // Se for crédito e estiver parcelado, valida o número de parcelas
+    if (r_tipo.value === 'credito') {
+      const isParcelado = document.getElementById("toggleParcelado").checked;
+      if (isParcelado) {
+        const parcelas = document.getElementById("despesaParcelas").value;
+        if (!parcelas || parcelas < 1) {
+          throw new Error("⚠️ Informe um número válido de parcelas.");
+        }
+      }
+    }
   }
 }
-
 // O distribuidor (decide se vai para comum ou financiamento).
 async function processarSalvamentoPix(dadosBase) {
   const subtipo = identificarSubtipoPix();
@@ -740,44 +880,46 @@ async function processarDespesaFinanciamento(dadosBase) {
 // O executor do cartão.
 async function processarDespesaCartao(dadosBase) {
   const cartaoId = parseInt(document.getElementById("cartao").value);
-  const isParcelado = document.getElementById("toggleParcelado").checked;
-  
-  // Se não for parcelado, qtd é 1. Se for, pega o valor do input.
-  const qtd = isParcelado ? parseInt(document.getElementById("despesaParcelas").value) : 1;
-  
-  // Só gera grupoId se houver mais de uma parcela
-  const grupoId = qtd > 1 ? `CARD-${Date.now()}` : null;
+  const tipoCartao = document.querySelector('input[name="tipoCartao"]:checked').value; // 'credito' ou 'debito'
 
-  // 1. O valor total para abater o limite é sempre o valor bruto digitado
-  const valorTotalCompra = dadosBase.valor;
-  
-  // 2. O valor de cada registro (parcela) no banco
-  const valorPorParcela = valorTotalCompra / qtd;
-
-  // 3. Atualiza o limite do cartão (UMA VEZ SÓ)
-  const cartao = await db.cartoes.get(cartaoId);
-  if (cartao) {
-    const novoLimite = cartao.limiteAtual - valorTotalCompra;
-    await db.cartoes.update(cartaoId, { limiteAtual: novoLimite });
-  }
-
-  // 4. Gera o(s) registro(s) no banco
-  const promessas = [];
-  for (let i = 1; i <= qtd; i++) {
-    promessas.push(db.despesas.add({
+  if (tipoCartao === 'debito') {
+    // LÓGICA PARA DÉBITO
+    return await db.despesas.add({
       ...dadosBase,
-      valor: valorPorParcela, // Se for à vista, valorPorParcela == valorTotalCompra
-      data: calcularProximaData(dadosBase.data, i - 1),
       cartaoId: cartaoId,
-      parcelaAtual: i,
-      parcelas: qtd,
-      grupoParcelas: grupoId,
-      formaPagamento: 'cartao',
-      pago: 0 
-    }));
+      formaPagamento: 'debito',
+      pago: 1 // No débito, já está pago
+    });
+  } else {
+    // LÓGICA PARA CRÉDITO (A que você já tinha)
+    const isParcelado = document.getElementById("toggleParcelado").checked;
+    const qtd = isParcelado ? parseInt(document.getElementById("despesaParcelas").value) : 1;
+    const grupoId = qtd > 1 ? `CARD-${Date.now()}` : null;
+    const valorTotalCompra = dadosBase.valor;
+    const valorPorParcela = valorTotalCompra / qtd;
+
+    const cartao = await db.cartoes.get(cartaoId);
+    if (cartao) {
+      const novoLimite = cartao.limiteAtual - valorTotalCompra;
+      await db.cartoes.update(cartaoId, { limiteAtual: novoLimite });
+    }
+
+    const promessas = [];
+    for (let i = 1; i <= qtd; i++) {
+      promessas.push(db.despesas.add({
+        ...dadosBase,
+        valor: valorPorParcela,
+        data: calcularProximaData(dadosBase.data, i - 1),
+        cartaoId: cartaoId,
+        parcelaAtual: i,
+        parcelas: qtd,
+        grupoParcelas: grupoId,
+        formaPagamento: 'cartao', // Aqui você pode manter 'cartao' ou mudar para 'credito'
+        pago: 0 
+      }));
+    }
+    return await Promise.all(promessas);
   }
-  
-  return await Promise.all(promessas);
 }
 //Faz as datas pularem de mês em mês.
 function calcularProximaData(dataString, mesesAdicionais) {
