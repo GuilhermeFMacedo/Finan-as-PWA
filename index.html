@@ -12,11 +12,11 @@
 </head>
 <body>
 
-  <div id="toast-container" class="toast-container"></div>
+<div id="toast-container" class="toast-container"></div>
   
-  <main class="container">
+<main class="container">
 
-    <section id="page-dashboard" class="page active">
+  <section id="page-dashboard" class="page active">
       <div class="card">
         <div class="mes-selector">
           <input type="month" id="mesSelecionado">
@@ -74,23 +74,31 @@
     <div id="listaItensPessoa"></div>
   </div>
 </div>
-    </section>
+  </section>
 
-    <section id="page-transacoes" class="page">
-      <h2>Transações</h2>
+  <section id="page-transacoes" class="page">
       <div class="mes-selector">
         <select id="selMes"></select>
         <select id="selAno"></select>
       </div>
       <div id="lista-transacoes"></div>
-      </section>
+  </section>
 
-    <section id="page-orcamentos" class="page">
-      <h2>Orçamentos</h2>
-      </section>
+  <section id="page-orcamentos" class="page">
+  <div class="header-acoes">
+    <div class="mes-selector">
+      <input type="month" id="mesOrcamento">
+      <select id="filtroPessoaOrcamento">
+        <option value="todas">Geral</option>
+      </select>
+    </div>
+  </div>
+  <br>
+  <div id="container-orcamentos" class="orcamentos-grid">
+    </div>
+</section>
 
-    <section id="page-config" class="page">
-      <h2>Configurações</h2>
+  <section id="page-config" class="page">
 
       <h3 class="config-grupo">Financeiro</h3>
 
@@ -118,104 +126,103 @@
         Backup e Restauração
       </button>
 
-    </section>
+  </section>
 
 <!-- PÁGINA CARTÕES -->
-<section id="page-cartoes" class="page">
-  
-  <div class="page-header">
-    <button class="back-btn" onclick="trocarPagina('config')">←</button>
-    <h2>Cartões</h2>
-  </div>
-  
-  <button class="primary-btn" onclick="adicionarCartao()">
-    Adicionar Cartão
-  </button>
-   <br><br>
-  <div id="lista-cartoes"></div>
-</section>
-
+  <section id="page-cartoes" class="page">
+    
+    <div class="page-header">
+      <button class="back-btn" onclick="trocarPagina('config')">←</button>
+      <h2>Cartões</h2>
+    </div>
+    
+    <button class="primary-btn" onclick="adicionarCartao()">
+      Adicionar Cartão
+    </button>
+    <br><br>
+    <div id="lista-cartoes"></div>
+  </section>
 
 <!-- PÁGINA CATEGORIAS -->
-<section id="page-categorias" class="page">
-  
-  <div class="page-header">
-    <button class="back-btn" onclick="trocarPagina('config')">←</button>
-    <h2>Categorias</h2>
-  </div>
-  
-  <button class="primary-btn" onclick="adicionarCategoria()">
-    Adicionar Categoria
-  </button>
-  <br><br>
-  <div id="lista-categorias"></div>
-</section>
+  <section id="page-categorias" class="page">
+    
+    <div class="page-header">
+      <button class="back-btn" onclick="trocarPagina('config')">←</button>
+      <h2>Categorias</h2>
+    </div>
+    
+    <button class="primary-btn" onclick="adicionarCategoria()">
+      Adicionar Categoria
+    </button>
+    <br><br>
+    <div id="lista-categorias"></div>
+  </section>
 
 <!-- PÁGINA PESSOAS -->
-<section id="page-pessoas" class="page">
+  <section id="page-pessoas" class="page">
 
-  <div class="page-header">
-    <button class="back-btn" onclick="trocarPagina('config')">←</button>
-    <h2>Pessoas</h2>
-  </div>
+    <div class="page-header">
+      <button class="back-btn" onclick="trocarPagina('config')">←</button>
+      <h2>Pessoas</h2>
+    </div>
 
-  <button class="primary-btn" onclick="adicionarPessoa()">
-    Adicionar Pessoa
-  </button>
- <br><br>
-  <div id="lista-pessoas"></div>
+    <button class="primary-btn" onclick="adicionarPessoa()">
+      Adicionar Pessoa
+    </button>
+  <br><br>
+    <div id="lista-pessoas"></div>
 
-</section>
+  </section>
 
 <!-- PÁGINA HISTORICO -->
-<section id="page-historico" class="page">
-  <div class="page-header">
-    <button class="back-btn" onclick="trocarPagina('config')">←</button>
-    <h2>Histórico Geral</h2>
-  </div>
+  <section id="page-historico" class="page">
+    <div class="page-header">
+      <button class="back-btn" onclick="trocarPagina('config')">←</button>
+      <h2>Histórico Geral</h2>
+    </div>
 
-  <div id="lista-historico"></div>
-</section>
+    <div id="lista-historico"></div>
+  </section>
 
 <!-- PÁGINA BACKUP -->
-<section id="page-backup" class="page">
-  
-  <div class="page-header">
-    <button class="back-btn" onclick="trocarPagina('config')">←</button>
-    <h2>Backup e Restauração</h2>
-  </div>
+  <section id="page-backup" class="page">
+    
+    <div class="page-header">
+      <button class="back-btn" onclick="trocarPagina('config')">←</button>
+      <h2>Backup e Restauração</h2>
+    </div>
 
-  <button class="primary-btn" onclick="exportarDados()">
-    Exportar Dados
-  </button>
+    <button class="primary-btn" onclick="exportarDados()">
+      Exportar Dados
+    </button>
 
-  <br><br>
+    <br><br>
 
-  <input type="file" id="inputImportarBackup" accept=".json" hidden>
+    <input type="file" id="inputImportarBackup" accept=".json" hidden>
 
-  <button class="primary-btn" onclick="document.getElementById('inputImportarBackup').click()">
-    Importar Backup
-  </button>
+    <button class="primary-btn" onclick="document.getElementById('inputImportarBackup').click()">
+      Importar Backup
+    </button>
 
-  <div id="backupErro" class="form-erro" style="display:none;"></div>
+    <div id="backupErro" class="form-erro" style="display:none;"></div>
 
-  <div id="confirmOverlay" class="modal-overlay" style="display:none;">
-    <div class="modal">
-      <p id="confirmMensagem"></p>
-      <div class="modal-actions">
-        <button class="btn-cancelarImportar"type="button" onclick="fecharConfirm()">Cancelar</button>
-        <button class="btn-aceitarImportar" type="button" id="confirmBtn">
-          Confirmar
-        </button>
+    <div id="confirmOverlay" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <p id="confirmMensagem"></p>
+        <div class="modal-actions">
+          <button class="btn-cancelarImportar"type="button" onclick="fecharConfirm()">Cancelar</button>
+          <button class="btn-aceitarImportar" type="button" id="confirmBtn">
+            Confirmar
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 
-</section>
+  </section>
 
 </main>
 
-  <nav class="bottom-nav">
+<nav class="bottom-nav">
     <button class="nav-item active" data-page="dashboard">
       <span class="material-symbols-outlined">home</span>
       <small>Dashboard</small>
@@ -239,7 +246,7 @@
       <span class="material-symbols-outlined">settings</span>
       <small>Configuração</small>
     </button>
-  </nav>
+ </nav>
   
 <!-- MODAL GLOBAL -->
 <div id="modalOverlay" class="modal-overlay hidden">
@@ -256,7 +263,9 @@
 </div>
 
 <!-- MODAL DOS ICONES DA CATEGORIA -->
-<div id="modalIconesOverlay" class="modal-overlay hidden"> <div class="modal"> <div class="modal-header">
+<div id="modalIconesOverlay" class="modal-overlay hidden"> 
+  <div class="modal"> 
+    <div class="modal-header">
       <h3 id="modalTitle">Escolha um ícone</h3>
       <button class="close" onclick="fecharModalIcones()">&times;</button>
     </div>
@@ -285,7 +294,7 @@
 <script src="js/dashboard.js"></script>
 <script src="js/transacoes.js"></script>
 <script src="js/app.js"></script>
-
+<script src="js/orcamentos.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {

@@ -62,6 +62,7 @@ function trocarPagina(page) {
   if (page === "transacoes") listarTransacoes(), configurarFiltros();
   if (page === "pessoas") listarPessoas();
   if (page === "historico") abrirHistorico();
+  if (page === "orcamentos") inicializarPaginaOrcamentos();
 }
 
 // 3. Controle de Modais e Diálogos
@@ -162,4 +163,33 @@ function notificarSucesso(mensagem) {
   setTimeout(() => {
     toast.remove();
   }, 3000);
+}
+
+async function inicializarPaginaOrcamentos() {
+  const inputMes = document.getElementById("mesOrcamento");
+  const filtroPessoa = document.getElementById("filtroPessoaOrcamento");
+
+  // 1. Define o mês atual se estiver vazio
+  if (inputMes && !inputMes.value) {
+    const hoje = new Date();
+    inputMes.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  // 2. Carrega as opções de pessoas no select da página de orçamentos
+  if (filtroPessoa && filtroPessoa.options.length <= 1) {
+    const pessoas = await db.pessoas.toArray();
+    pessoas.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.nome;
+      filtroPessoa.appendChild(opt);
+    });
+  }
+
+  // 3. Ativa os ouvintes de evento para atualizar o gráfico ao mudar os filtros
+  inputMes.onchange = () => listarOrcamentos();
+  filtroPessoa.onchange = () => listarOrcamentos();
+
+  // 4. Renderiza os gráficos
+  listarOrcamentos();
 }

@@ -2440,3 +2440,186 @@ input[type="file"]::file-selector-button {
 .card-rolagem strong {
     font-size: 1rem;
 }
+
+
+
+
+
+
+
+
+/* ==========================================================================
+   TELA DE ORÇAMENTOS (METAS)
+   ========================================================================== */
+
+/* 1. Container de Filtros (Consistente com .mes-selector) */
+.filtros-orcamento {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.filtros-orcamento select,
+.filtros-orcamento input {
+    flex: 1;
+    background: #1c1c1e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 12px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.2s;
+    /* Correção do Erro: */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none; 
+}
+
+.filtros-orcamento select:focus,
+.filtros-orcamento input:focus {
+    border-color: var(--primary);
+}
+
+/* 2. Grid de Orçamentos */
+#container-orcamentos {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* 3. O Card de Orçamento (Estilo Glass) */
+.card-orcamento-l {
+    background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    border-radius: 18px;
+    padding: 16px;
+    transition: transform 0.2s ease, border-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+
+
+/* Fundo avermelhado (Somente quando estourar de fato 100%+) */
+.card-orcamento-l[data-estouro-real="true"] {
+    background: linear-gradient(145deg, rgba(231, 76, 60, 0.12), rgba(255, 255, 255, 0.02)) !important;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+.card-orcamento-l:active {
+    transform: scale(0.98);
+}
+
+/* 4. Informações do Topo */
+.orc-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.orc-detalhe {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.orc-detalhe strong {
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+.orc-detalhe p {
+    margin: 4px 0 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Botão de Editar/Add Meta */
+.btn-edit-orc {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-edit-orc:active {
+    background: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* 5. Barra de Progresso */
+.progress-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 6. Footer do Card (Porcentagem e Saldo) */
+.orc-footer-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* 7. Elementos de Aviso e Mensagens */
+.badge-erro {
+    background: var(--danger);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.meta-herdada-aviso {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.msg-sem-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.01);
+}
+
+/* 8. Responsividade */
+@media (max-width: 480px) {
+    .filtros-orcamento {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .orc-detalhe strong {
+        font-size: 0.95rem;
+    }
+}
