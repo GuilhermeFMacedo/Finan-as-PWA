@@ -635,10 +635,14 @@ async function abrirModalPagamentoFatura(cartaoId, mesInput) {
   const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
   const despesas = await db.despesas.where("cartaoId").equals(cartaoId).toArray();
-  const despesasCiclo = despesas.filter(d => d.formaPagamento === "cartao" && new Date(d.data) >= dataInicio && new Date(d.data) <= dataFim);
-  const totalFatura = despesasCiclo.reduce((acc, d) => acc + Number(d.valor), 0);
+  const despesasCiclo = despesas.filter(d => {
+      if (d.formaPagamento !== "cartao") return false;
+      // UNIFORMIZAÇÃO: data + 'T12:00:00'
+      const dataD = new Date(d.data + 'T12:00:00');
+      return dataD >= dataInicio && dataD <= dataFim;
+    });
 
-  const html = `
+    const html = `
     <h2 class="modal-pagamento-title">Cartão: ${cartao.nome}</h2>
     <p class="modal-pagamento-valor"><strong>Valor: </strong> ${formatarMoeda(totalFatura)}</p>
 <br>
@@ -679,14 +683,12 @@ async function confirmarPagamentoFatura(cartaoId, mesInput) {
 
     const despesasCiclo = despesas.filter(d => {
       if (d.formaPagamento !== "cartao") return false;
-      const data = new Date(d.data);
-      return data >= dataInicio && data <= dataFim;
+      // UNIFORMIZAÇÃO: data + 'T12:00:00'
+      const dataD = new Date(d.data + 'T12:00:00');
+      return dataD >= dataInicio && dataD <= dataFim;
     });
 
-    const totalFatura = despesasCiclo.reduce(
-      (acc, d) => acc + Number(d.valor),
-      0
-    );
+    const totalFatura = despesasCiclo.reduce((acc, d) => acc + Number(d.valor), 0);
 
     // Impede pagar duas vezes
     const jaPaga = await db.pagamentosFatura
