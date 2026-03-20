@@ -48,6 +48,7 @@
             <h3 id="totalDespesa">R$ 0,00</h3>
           </div>
         </div>
+
         <div id="detalheFluxo" class="detalhe-fluxo-container"></div>
       </div>
 
@@ -85,6 +86,7 @@
   </section>
 
   <section id="page-orcamentos" class="page">
+    
   <div class="header-acoes">
     <div class="mes-selector">
       <input type="month" id="mesOrcamento">
@@ -94,8 +96,22 @@
     </div>
   </div>
   <br>
-  <div id="container-orcamentos" class="orcamentos-grid">
+  <div id="container-orcamentos" class="orcamentos-grid"></div>
+</section>
+
+<section id="page-detalhe-categoria" class="page">
+
+    <div class="page-header">
+        <button onclick="trocarPagina('orcamentos')" class="back-btn">←</button>
+        <h2 id="titulo-detalhe-cat">Detalhes</h2>
     </div>
+
+    <div class="card">
+        <canvas id="graficoSubcategorias"></canvas>
+    </div>
+
+    <div id="lista-detalhe-sub" class="container-sub-lista">
+        </div>
 </section>
 
   <section id="page-config" class="page">
@@ -295,7 +311,7 @@
 <script src="js/transacoes.js"></script>
 <script src="js/app.js"></script>
 <script src="js/orcamentos.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');

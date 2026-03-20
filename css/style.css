@@ -2551,6 +2551,11 @@ input[type="file"]::file-selector-button {
     transition: all 0.2s;
 }
 
+.btn-edit-orc {
+    position: relative;
+    z-index: 10;
+}
+
 .btn-edit-orc:active {
     background: var(--primary);
     transform: translateY(-2px);
@@ -2622,4 +2627,43 @@ input[type="file"]::file-selector-button {
     .orc-detalhe strong {
         font-size: 0.95rem;
     }
+}
+
+
+
+
+
+
+
+
+
+
+/* Container da página de detalhes */
+#page-detalhe-categoria {
+    padding: 10px;
+}
+
+/* Card que envolve o gráfico */
+#page-detalhe-categoria .card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 15px 5px; /* Reduzi o padding lateral para o gráfico ganhar espaço */
+    margin-bottom: 20px;
+}
+
+/* Ajuste do Título e Botão Voltar */
+.header-detalhe {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 0 10px;
+}
+
+#titulo-detalhe-cat {
+    font-size: 1.2rem;
+    color: #fff;
+    font-weight: 700;
 }

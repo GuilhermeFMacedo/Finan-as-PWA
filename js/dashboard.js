@@ -642,6 +642,7 @@ async function abrirModalPagamentoFatura(cartaoId, mesInput) {
       return dataD >= dataInicio && dataD <= dataFim;
     });
 
+    const totalFatura = despesasCiclo.reduce((total, d) => total + Number(d.valor), 0);
     const html = `
     <h2 class="modal-pagamento-title">Cartão: ${cartao.nome}</h2>
     <p class="modal-pagamento-valor"><strong>Valor: </strong> ${formatarMoeda(totalFatura)}</p>
