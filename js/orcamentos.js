@@ -225,6 +225,9 @@ async function renderizarGraficoSubcategorias(catId, mes, pessoaId) {
     const canvas = document.getElementById('graficoSubcategorias');
     if (!canvas) return;
 
+    // Pega o container do gráfico para podermos escondê-lo se necessário
+    const containerGrafico = canvas.parentElement;
+
     try {
         const categoriaPai = await db.categorias.get(Number(catId));
         const corBase = categoriaPai ? categoriaPai.cor : '#3498db';
@@ -243,67 +246,163 @@ async function renderizarGraficoSubcategorias(catId, mes, pessoaId) {
             const total = despesas
                 .filter(d => Number(d.subcategoriaId) === s.id)
                 .reduce((sum, d) => sum + Number(d.valor), 0);
-            return { nome: s.nome, total };
+            return { id: s.id, nome: s.nome, total };
         }).filter(item => item.total > 0).sort((a, b) => b.total - a.total);
 
-        const ctx = canvas.getContext('2d');
-        if (chartSub) chartSub.destroy();
+        // 1. TRATAMENTO PARA O QUADRADO VAZIO:
+        if (dadosGrafico.length === 0) {
+            if (window.chartSub) window.chartSub.destroy();
+            canvas.style.display = 'none';
+            if (containerGrafico) containerGrafico.style.display = 'none';
+            
+            // Chama a lista para exibir a mensagem de "vazio" que criamos antes
+            exibirDetalhesTransacoes(catId, mes, null, pessoaId);
+            return; 
+        }
 
-        chartSub = new Chart(ctx, {
+        // Se houver dados, exibe o container e o canvas
+        canvas.style.display = 'block';
+        if (containerGrafico) containerGrafico.style.display = 'block';
+
+        // 2. Renderização do Gráfico
+        const ctx = canvas.getContext('2d');
+        if (window.chartSub) window.chartSub.destroy();
+
+        window.chartSub = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: dadosGrafico.map(d => d.nome),
                 datasets: [{
                     data: dadosGrafico.map(d => d.total),
-                    backgroundColor: corBase + 'cc', // Cor da categoria com transparência
+                    backgroundColor: corBase + 'cc',
                     borderRadius: 6,
-                    barThickness: 24 // Barras um pouco mais grossas para facilitar a leitura
+                    barThickness: 24,
+                    subcategoriaIds: dadosGrafico.map(d => d.id) 
                 }]
             },
             options: {
+                onClick: (evt, item) => {
+                    if (item.length > 0) {
+                        const index = item[0].index;
+                        const subId = window.chartSub.data.datasets[0].subcategoriaIds[index];
+                        exibirDetalhesTransacoes(catId, mes, subId, pessoaId);
+                    }
+                },
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: {
-                    padding: { right: 65, left: 5 } // Espaço extra na direita para o valor R$
-                },
+                layout: { padding: { right: 65, left: 5 } },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false } // Desnecessário clicar/passar o mouse
+                    tooltip: { enabled: true }
                 },
                 scales: {
-                    x: { display: false }, // Remove o eixo de baixo para limpar
+                    x: { display: false },
                     y: {
                         grid: { display: false, drawBorder: false },
-                        ticks: { 
-                            color: '#fff', 
-                            font: { size: 11, weight: '500' },
-                            padding: 5
-                        }
+                        ticks: { color: '#fff', font: { size: 11, weight: '500' }, padding: 5 }
                     }
                 },
                 animation: {
                     onComplete: function() {
                         const chartCtx = this.ctx;
-                        chartCtx.font = "bold 13px sans-serif";
+                        chartCtx.font = "bold 12px sans-serif";
                         chartCtx.fillStyle = "#fff";
                         chartCtx.textAlign = "left";
                         chartCtx.textBaseline = "middle";
-
                         this.data.datasets.forEach((dataset, i) => {
                             const meta = this.getDatasetMeta(i);
                             meta.data.forEach((bar, index) => {
                                 const val = dataset.data[index];
-                                const texto = formatarMoeda(val); // Usa sua função global de formatar
-                                chartCtx.fillText(texto, bar.x + 8, bar.y);
-                              });
+                                chartCtx.fillText(formatarMoeda(val), bar.x + 8, bar.y);
+                            });
                         });
                     }
                 }
             }
         });
 
+        // Carrega a lista inicial (todas as subcategorias daquela categoria)
+        exibirDetalhesTransacoes(catId, mes, null, pessoaId);
+
     } catch (error) {
         console.error("Erro no gráfico:", error);
     }
+}
+
+async function exibirDetalhesTransacoes(categoriaId, mesFiltro, subcategoriaId = null, pessoaId = "todas") {
+    const containerLista = document.getElementById("lista-detalhes-orcamento");
+    if (!containerLista) return;
+
+    // 1. Busca os dados
+    let query = db.despesas.where("data").startsWith(mesFiltro)
+                  .filter(d => Number(d.categoriaId) === Number(categoriaId));
+
+    if (pessoaId !== "todas") {
+        query = query.filter(d => String(d.pessoaId) === String(pessoaId));
+    }
+    
+    if (subcategoriaId) {
+        query = query.filter(d => Number(d.subcategoriaId) === Number(subcategoriaId));
+    }
+
+    const despesas = await query.toArray();
+
+    // VERIFICAÇÃO DE DADOS VAZIOS
+    if (despesas.length === 0) {
+        containerLista.innerHTML = `
+            <div class="empty-state-detalhes">
+                <span class="material-symbols-outlined">payments</span>
+                <p>Nenhuma transação encontrada para este filtro.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const subcats = await db.subcategorias.where("categoriaId").equals(Number(categoriaId)).toArray();
+
+    // 2. Agrupar despesas por subcategoria
+    const agrupado = {};
+    despesas.forEach(d => {
+        const subId = d.subcategoriaId || 0; // 0 para sem subcategoria
+        if (!agrupado[subId]) agrupado[subId] = [];
+        agrupado[subId].push(d);
+    });
+
+    // 3. Renderizar por seções
+    containerLista.innerHTML = `
+        <div class="detalhes-secoes-wrapper">
+            ${Object.keys(agrupado).map(sId => {
+                const nomeSub = subcats.find(s => s.id === Number(sId))?.nome || "Outros / Sem Subcategoria";
+                const itens = agrupado[sId].sort((a, b) => b.data.localeCompare(a.data));
+                const totalSub = itens.reduce((sum, i) => sum + Number(i.valor), 0);
+
+                return `
+                <section class="secao-subcategoria">
+                    <header class="header-sub">
+                        <span>${nomeSub}</span>
+                        
+                    </header>
+                    <div class="lista-itens-sub">
+                        ${itens.map(item => `
+                            <div class="item-transacao-simples">
+                                <div class="item-info">
+                                    <span class="item-desc">${item.descricao}</span>
+                                    <span class="item-data">${item.data.split('-').reverse().slice(0,2).join('/')}</span>
+                                </div>
+                                <span class="item-valor">${formatarMoeda(Number(item.valor))}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+// Função auxiliar para data curta (ex: 12 Mar)
+function formatarDataCurta(dataString) {
+    const data = new Date(dataString + 'T00:00:00');
+    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
