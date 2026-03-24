@@ -119,7 +119,7 @@ async function abrirHistorico() {
 
     let htmlBuffer = "";
 
-    // Filtro Base para Despesas (Pix e Financiamento)
+    // Filtro Base para Despesas (Pix, Financiamento e DÉBITO)
     const despesasBase = despesas.filter(d => {
       const estaPago = d.pago === true || d.pago === 1;
       const eDaPessoa = filtroPessoaId === "todas" || Number(d.pessoaId) === Number(filtroPessoaId);
@@ -140,7 +140,26 @@ async function abrirHistorico() {
           data: fData(comp ? comp.dataUpload : d.data),
           cor: "#6366f1",
           badge: "PIX",
-          comprovanteId: comp?.id
+          comprovanteId: comp?.id,
+          idReal: d.id
+        });
+      });
+    }
+
+    // --- NOVO LOOP: DÉBITO ---
+    const debitosPagos = despesasBase.filter(d => d.formaPagamento === "debito");
+    if (debitosPagos.length > 0) {
+      htmlBuffer += `<h4 class="config-grupo">Pagamentos no Débito</h4>`;
+      debitosPagos.forEach(d => {
+        const comp = comprovantes.find(c => c.referenciaId === d.id);
+        htmlBuffer += gerarCardHistorico({
+          titulo: d.descricao,
+          valor: fMoeda(d.valor),
+          data: fData(comp ? comp.dataUpload : d.data),
+          cor: "#10b981", // Um verde esmeralda para diferenciar
+          badge: "DÉBITO",
+          comprovanteId: comp?.id,
+          idReal: d.id
         });
       });
     }
@@ -157,7 +176,8 @@ async function abrirHistorico() {
           data: fData(comp ? comp.dataUpload : d.data),
           cor: "#7c3aed",
           badge: d.parcelaAtual ? `${d.parcelaAtual}/${d.parcelas}` : "PARC",
-          comprovanteId: comp?.id
+          comprovanteId: comp?.id,
+          idReal: d.id
         });
       });
     }
@@ -175,7 +195,8 @@ async function abrirHistorico() {
           data: fData(p.dataPagamento),
           cor: cartao?.cor || "#ccc",
           badge: "CARTÃO",
-          comprovanteId: comp?.id
+          comprovanteId: comp?.id,
+          idReal: p.id
         });
       });
     }
@@ -478,7 +499,7 @@ async function listarCartoes() {
         </div>
 
         <button class="btn-excluir" onclick="excluirCartao(${c.id})" title="Excluir">
-          🗑️
+          <span class="material-symbols-outlined">delete_outline</span>
         </button>
       </div>
     `).join('');
@@ -535,7 +556,7 @@ async function listarCategorias() {
               + Sub
             </button>
             <button class="btn-excluir" onclick="excluirCategoria(${c.id})">
-              🗑️
+              <span class="material-symbols-outlined">delete_outline</span>
             </button>
           </div>
         </div>
@@ -567,7 +588,7 @@ async function listarPessoas() {
         </div>
 
         <button class="btn-excluir" onclick="excluirPessoa(${p.id})" title="Excluir Pessoa">
-          🗑️
+          <span class="material-symbols-outlined">delete_outline</span>
         </button>
       </div>
     `).join('');
@@ -688,7 +709,8 @@ function toggleGradeIcones() {
 }
 
 // Histórico/Comprovantes
-function gerarCardHistorico({ titulo, valor, data, badge, comprovanteId }) {
+// Localize esta função no final do config.js e substitua:
+function gerarCardHistorico({ titulo, valor, data, badge, comprovanteId, idReal }) {
   return `
     <div class="item-historico">
       <div class="header">
@@ -699,58 +721,77 @@ function gerarCardHistorico({ titulo, valor, data, badge, comprovanteId }) {
         <span>Valor: <b style="color:var(--text-main)">${valor}</b></span>
         <span>Pago em: ${data}</span>
       </div>
-      ${comprovanteId ? `
+      <div class="acoes-historico">
         <button class="btn-ver-comprovante" onclick="verComprovante('${comprovanteId}')">
-          <span class="material-symbols-outlined" style="font-size:16px">receipt_long</span>
+          <span class="material-symbols-outlined">receipt_long</span>
           Ver Recibo
-        </button>` : ''}
+        </button>
+        
+        <button class="btn-ver-comprovante" onclick="dispararEdicaoComprovante('${idReal}')">
+          <span class="material-symbols-outlined">published_with_changes</span>
+          Trocar Recibo
+        </button>
+      </div>
     </div>
   `;
 }
 
 async function verComprovante(comprovanteId) {
-  const comprovante = await db.comprovantes.get(Number(comprovanteId));
-  
-  if (!comprovante) {
-    alert("Comprovante não encontrado.");
+  // Se o ID for undefined, null ou a string "undefined" (comum vindo do HTML)
+  if (!comprovanteId || comprovanteId === "undefined" || comprovanteId === "null") {
+    abrirModal("Sem Comprovante", `
+      <div style="text-align: center; padding: 25px 15px;">
+        <div style="background: rgba(245, 158, 11, 0.1); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+          <span class="material-symbols-outlined" style="font-size: 32px; color: #f59e0b;">history_edu</span>
+        </div>
+        <p style="color: var(--text-main); font-weight: bold; margin-bottom: 8px;">Nenhum arquivo anexado</p>
+        <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+          Esta despesa foi paga, mas o comprovante não foi enviado.<br><br>
+          Clique em <b>"Trocar Comprovante"</b> no card da despesa para adicionar um agora.
+        </p>
+        <button onclick="fecharModal()" style="margin-top: 20px; width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--border); color: white; font-weight: bold;">Entendi</button>
+      </div>
+    `);
     return;
   }
 
-  const arquivo = comprovante.arquivo;
-  const isImage = arquivo.startsWith("data:image");
+  try {
+    const comprovante = await db.comprovantes.get(Number(comprovanteId));
+    
+    if (!comprovante) {
+      notificarSucesso("⚠️ O arquivo não foi encontrado.");
+      return;
+    }
 
-  // No celular, botões grandes e fáceis de tocar (Touch Friendly)
-  let botoes = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-      <a href="${arquivo}" download="comprovante.png" 
-         style="text-decoration:none; background:#22c55e; color:white; padding:12px; border-radius:8px; text-align:center; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
-         📥 Salvar
-      </a>
-      
-      <button onclick="compartilharComprovante('${arquivo}')" 
-         style="background:#6366f1; color:white; padding:12px; border-radius:8px; border:none; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:5px;">
-         📤 Enviar
-      </button>
-    </div>
-  `;
+    const arquivo = comprovante.arquivo;
+    const isImage = arquivo.startsWith("data:image");
 
-  let exibicao = "";
-  if (isImage) {
-    exibicao = `
-      <div style="width:100%; overflow:hidden; border-radius:8px; background:#f0f0f0;">
-        <img src="${arquivo}" 
-             style="width:100%; display:block; height:auto; pointer-events: auto;"
-             id="imgComprovante">
+    let html = `
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px;">
+          <a href="${arquivo}" download="comprovante" class="btn-acao-comprovante" style="background:#22c55e; color:white; padding:12px; border-radius:10px; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span class="material-symbols-outlined">download</span> Salvar
+          </a>
+          <button onclick="compartilharComprovante('${arquivo}')" style="background:#6366f1; color:white; padding:12px; border-radius:10px; border:none; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-family: inherit; font-weight:500;">
+            <span class="material-symbols-outlined">share</span> Enviar
+          </button>
+        </div>
+
+        <div style="width:100%; border-radius:12px; overflow:hidden; background:#000; border: 1px solid var(--border); display: flex; justify-content: center;">
+          ${isImage 
+            ? `<img src="${arquivo}" style="max-width:100%; height:auto; display:block;">` 
+            : `<iframe src="${arquivo}" width="100%" height="450px" style="border:none;"></iframe>`
+          }
+        </div>
       </div>
-      <p style="font-size:12px; color:#666; text-align:center; margin-top:8px;">
-        💡 Dica: Você pode usar o gesto de pinça para dar zoom.
-      </p>
     `;
-  } else {
-    exibicao = `<iframe src="${arquivo}" width="100%" height="400px" style="border:none; border-radius:8px;"></iframe>`;
-  }
 
-  abrirModal("Comprovante", botoes + exibicao);
+    abrirModal("Visualizar Recibo", html);
+
+  } catch (erro) {
+    console.error("Erro ao carregar:", erro);
+    notificarSucesso("Erro ao abrir arquivo.");
+  }
 }
 
 async function compartilharComprovante(base64Data) {
@@ -766,10 +807,136 @@ async function compartilharComprovante(base64Data) {
         text: 'Segue comprovante de pagamento.',
       });
     } else {
-      alert("Seu navegador não suporta compartilhamento direto. Use o botão Salvar.");
+      notificarSucesso("Seu navegador não suporta compartilhamento direto. Use o botão Salvar.");
     }
   } catch (err) {
     console.error("Erro ao compartilhar:", err);
+  }
+}
+
+function dispararEdicaoComprovante(idDaDespesa) {
+  // Se aparecer 'undefined' aqui, o erro está no BOTÃO que você clicou
+  console.log("ID recebido para edição:", idDaDespesa);
+
+  if (!idDaDespesa) {
+    alert("Erro: ID da despesa não encontrado.");
+    return;
+  }
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,application/pdf';
+  
+  input.onchange = async (e) => {
+    const arquivo = e.target.files[0];
+    if (!arquivo) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target.result;
+      // Passa o ID adiante para a próxima tela
+      confirmarNovoComprovante(idDaDespesa, base64, arquivo.type);
+    };
+    reader.readAsDataURL(arquivo);
+  };
+  
+  input.click();
+}
+
+function confirmarNovoComprovante(idDaDespesa, base64, tipo) {
+  const isImage = tipo.startsWith("image");
+  
+  let html = `
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <p style="color: var(--text-secondary); font-size: 14px; text-align: center;">
+        Deseja salvar este comprovante?
+      </p>
+      <div style="width: 100%; max-height: 300px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--border); background: #000; display: flex; justify-content: center;">
+        ${isImage 
+          ? `<img src="${base64}" style="width: 100%; height: auto; display: block;">` 
+          : `<div style="padding: 40px; text-align: center;">📄 PDF Selecionado</div>`
+        }
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <button onclick="fecharModal()" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border); padding: 12px; border-radius: 8px;">Cancelar</button>
+        <button id="btnFinalizarUpload" style="background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold;">Confirmar</button>
+      </div>
+    </div>
+  `;
+
+  abrirModal("Confirmar Arquivo", html);
+
+  // Aqui prendemos o ID no clique do botão
+  document.getElementById("btnFinalizarUpload").onclick = () => {
+    salvarEdicaoFinal(idDaDespesa, base64);
+  };
+}
+
+// Função para converter o arquivo e salvar no Dexie
+async function atualizarComprovante(comprovanteId, arquivo) {
+  try {
+    const reader = new FileReader();
+    
+    reader.onload = async (event) => {
+      const base64 = event.target.result;
+      
+      // Atualiza no banco de dados Dexie
+      await db.comprovantes.update(Number(comprovanteId), {
+        arquivo: base64,
+        dataUpload: new Date().toISOString()
+      });
+
+      notificarSucesso("Comprovante atualizado com sucesso!");
+      
+      // Recarrega a lista para mostrar a nova data/dados se necessário
+      abrirHistorico();
+    };
+
+    reader.readAsDataURL(arquivo);
+  } catch (erro) {
+    console.error("Erro ao atualizar comprovante:", erro);
+    notificarSucesso("Erro ao salvar o novo comprovante.");
+  }
+}
+
+async function salvarEdicaoFinal(idDaDespesa, base64) {
+  try {
+    const idLimpo = Number(idDaDespesa);
+    
+    // Se chegar aqui como NaN ou 0, paramos o processo antes do erro do Dexie
+    if (!idLimpo || isNaN(idLimpo)) {
+      console.error("DEBUG - ID recebido:", idDaDespesa);
+      alert("Erro interno: O ID da transação se perdeu. Tente recarregar a página.");
+      return;
+    }
+
+    const existente = await db.comprovantes
+      .where("referenciaId")
+      .equals(idLimpo)
+      .first();
+
+    if (existente) {
+      await db.comprovantes.update(existente.id, {
+        arquivo: base64,
+        dataUpload: new Date()
+      });
+    } else {
+      await db.comprovantes.add({
+        tipo: "pix", 
+        referenciaId: idLimpo,
+        arquivo: base64,
+        nomeArquivo: "comprovante_manual.png",
+        dataUpload: new Date()
+      });
+      await db.despesas.update(idLimpo, { pago: true });
+    }
+
+    fecharModal();
+    notificarSucesso("✅ Comprovante atualizado!");
+    if (typeof atualizarDashboard === "function") atualizarDashboard();
+    
+  } catch (erro) {
+    console.error("Erro ao salvar no Dexie:", erro);
   }
 }
 

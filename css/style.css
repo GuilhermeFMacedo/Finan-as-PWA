@@ -1028,7 +1028,7 @@ body {
   background: none;
   border: none;
   font-size: 1.1rem;
-   
+  color: #ff0000;
   opacity: 0.6;
   transition: 0.2s;
   flex-shrink: 0;
@@ -2754,4 +2754,11 @@ input[type="file"]::file-selector-button {
 .empty-state-detalhes p {
     font-size: 14px;
     font-weight: 400;
+}
+
+/* Container de ações para alinhar os botões lado a lado */
+.acoes-historico {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
 }

@@ -173,34 +173,23 @@ function formatarMoeda(valor) {
 }
 
 async function carregarResumoCartoes() {
-  console.log("🚀 Iniciando carregarResumoCartoes...");
   const mesInput = document.getElementById("mesSelecionado").value;
-  console.log("📅 Mes Selecionado (Input):", mesInput);
-  
-  if (!mesInput) {
-    console.warn("⚠️ Nenhum mês selecionado no input.");
-    return;
-  }
 
   const [ano, mes] = mesInput.split("-").map(Number);
   const hoje = new Date();
 
-  console.log("💾 Buscando cartões e despesas no DB...");
   const cartoes = await db.cartoes.toArray();
   const despesas = await db.despesas.toArray();
-  console.log(`📊 Total de cartões: ${cartoes.length} | Total de despesas: ${despesas.length}`);
 
   const container = document.getElementById("resumoCartoes");
   container.innerHTML = "";
 
   for (const cartao of cartoes) {
-    console.group(`💳 Processando Cartão: ${cartao.nome}`);
     const diaFechamento = Number(cartao.fechamento);
 
     const dataFim = new Date(ano, mes - 1, diaFechamento, 23, 59, 59);
     const dataInicio = new Date(ano, mes - 2, diaFechamento + 1, 0, 0, 0);
 
-    console.log(`🕒 Ciclo: ${dataInicio.toLocaleDateString()} até ${dataFim.toLocaleDateString()}`);
 
     const despesasCartao = despesas.filter(d => {
       if (d.cartaoId !== cartao.id || d.formaPagamento !== "cartao") return false;
@@ -211,13 +200,11 @@ async function carregarResumoCartoes() {
     });
 
     const totalFatura = despesasCartao.reduce((total, d) => total + (Number(d.valor) || 0), 0);
-    console.log(`💰 Despesas encontradas no ciclo: ${despesasCartao.length} | Total: R$ ${totalFatura}`);
 
     const limiteDisponivel = Number(cartao.limiteAtual) || 0;
     const faturaFechada = hoje > dataFim;
     const status = faturaFechada ? "Fechada" : "Aberta";
 
-    console.log(`📌 Status: ${status} | Limite Disp: ${limiteDisponivel}`);
 
     const porcentagem = Math.min(((Number(cartao.limite) - limiteDisponivel) / cartao.limite) * 100, 100);
 
@@ -637,26 +624,30 @@ async function abrirModalPagamentoFatura(cartaoId, mesInput) {
   const despesas = await db.despesas.where("cartaoId").equals(cartaoId).toArray();
   const despesasCiclo = despesas.filter(d => {
       if (d.formaPagamento !== "cartao") return false;
-      // UNIFORMIZAÇÃO: data + 'T12:00:00'
       const dataD = new Date(d.data + 'T12:00:00');
       return dataD >= dataInicio && dataD <= dataFim;
-    });
+  });
 
-    const totalFatura = despesasCiclo.reduce((total, d) => total + Number(d.valor), 0);
-    const html = `
+  const totalFatura = despesasCiclo.reduce((total, d) => total + Number(d.valor), 0);
+  
+  const html = `
     <h2 class="modal-pagamento-title">Cartão: ${cartao.nome}</h2>
     <p class="modal-pagamento-valor"><strong>Valor: </strong> ${formatarMoeda(totalFatura)}</p>
-<br>
-  <label class="modal-pagamento-label">Comprovante:</label>
-  <div class="modal-pagamento-file-wrapper">
-    <span class="modal-pagamento-btn-file">Escolher arquivo</span>
-    <input class="modal-pagamento-input-file" type="file" id="inputComprovante" accept="image/*,application/pdf">
-  </div>
+    <br>
+    <label class="modal-pagamento-label">Comprovante:</label>
+    
+    <div id="previewComprovanteContainer"></div>
 
-  <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoFatura(${cartaoId}, '${mesInput}')">
-    Confirmar Pagamento
-  </button>
-`;
+    <div class="modal-pagamento-file-wrapper">
+      <span class="modal-pagamento-btn-file">Escolher arquivo</span>
+      <input class="modal-pagamento-input-file" type="file" id="inputComprovante" 
+             accept="image/*,application/pdf" onchange="gerarPreviewNaTela(this)">
+    </div>
+
+    <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoFatura(${cartaoId}, '${mesInput}')">
+      Confirmar Pagamento
+    </button>
+  `;
 
   abrirModal("Fatura", html);
 }
@@ -732,25 +723,28 @@ async function confirmarPagamentoFatura(cartaoId, mesInput) {
     notificarSucesso("Fatura paga e comprovante salvo!");
 }
 
+
+
 async function abrirModalPagamentoPix(despesaId) {
   const despesa = await db.despesas.get(despesaId);
-
   const html = `
-  <h2 class="modal-pagamento-title">Conta De ${despesa.descricao || "Sem descrição"}</h2>
-  <p class="modal-pagamento-valor">Valor: ${formatarMoeda(Number(despesa.valor))}</p>
-<br>
-  <label class="modal-pagamento-label">Comprovante:</label>
-  <div class="modal-pagamento-file-wrapper">
-    <span class="modal-pagamento-btn-file">Escolher arquivo</span>
-    <input class="modal-pagamento-input-file" type="file" id="inputComprovante" accept="image/*,application/pdf">
-  </div>
+    <h2 class="modal-pagamento-title">Conta De ${despesa.descricao || "Sem descrição"}</h2>
+    <p class="modal-pagamento-valor">Valor: ${formatarMoeda(Number(despesa.valor))}</p>
+    <br>
+    <label class="modal-pagamento-label">Comprovante:</label>
+    <div id="previewComprovanteContainer"></div>
+    <div class="modal-pagamento-file-wrapper">
+      <span class="modal-pagamento-btn-file">Escolher arquivo</span>
+      <input class="modal-pagamento-input-file" type="file" id="inputComprovante" accept="image/*,application/pdf" onchange="gerarPreviewNaTela(this)">
+    </div>
 
-  <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoPix(${despesaId})">
-    Confirmar Pagamento
-  </button>
-`;
+    
 
-  abrirModal(" Pix", html);
+    <button class="modal-pagamento-btn-confirmar" onclick="confirmarPagamentoPix(${despesaId})">
+      Confirmar Pagamento
+    </button>
+  `;
+  abrirModal("Pagamento Pix", html);
 }
 
 async function confirmarPagamentoPix(despesaId) {
@@ -795,7 +789,28 @@ document.addEventListener("click", e => {
   }
 });
 
+async function gerarPreviewNaTela(input) {
+    const container = document.getElementById("previewComprovanteContainer");
+    const file = input.files[0];
 
+    if (!file || !container) return;
+
+    try {
+        const base64 = await arquivoParaBase64(file);
+        const isImage = file.type.startsWith("image");
+
+        container.innerHTML = `
+            <div style="margin-top: 15px; width: 100%; max-height: 200px; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: #000; display: flex; justify-content: center; animation: fadeIn 0.3s ease;">
+                ${isImage 
+                    ? `<img src="${base64}" style="width: 100%; height: auto; object-fit: contain;">` 
+                    : `<div style="padding: 20px; text-align: center;"><span class="material-symbols-outlined" style="font-size: 40px; color: var(--primary);">description</span><br><small>PDF Selecionado</small></div>`
+                }
+            </div>
+        `;
+    } catch (err) {
+        console.error("Erro no preview:", err);
+    }
+}
 
 
 
